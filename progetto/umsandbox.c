@@ -1,4 +1,5 @@
- /* *
+ /*
+  * *
   *  * umsandbox.c
   *   * 
   *    * Copyright 2012 phra
@@ -19,7 +20,7 @@
   *                   * MA 02110-1301, USA.
   *                    * 
   *                     * 
-  *                      */
+  * * * * * * * * * * * * */
 
 
 #include <unistd.h>
