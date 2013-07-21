@@ -253,6 +253,7 @@ static int checksocket(int type, void *arg, int arglen,
 
 static long umnet_msocket(char *path, int domain, int type, int protocol)
 {
+    printf("umnet_msocket");
 	struct umnet *mh;
 	long rv;
 	if (path)

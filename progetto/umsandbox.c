@@ -227,7 +227,7 @@ static int my_uname(struct utsname *buf){
 }
 
 static int mysocket(int domain, int type, int protocol){
-    int ret = socket(domain, type, protocol);
+    int ret = msocket(NULL, domain, type, protocol);
     switch(domain){
         case AF_LOCAL:
             printf("#%d socket locale. (%d)\n",ret,AF_LOCAL);
@@ -366,7 +366,7 @@ static void __attribute__ ((constructor)) init (void) {
     s.ioctlparms=ioctlparms;
     s.syscall=(sysfun *)calloc(scmap_scmapsize,sizeof(sysfun));
     s.socket=(sysfun *)calloc(scmap_sockmapsize,sizeof(sysfun));
-    SERVICESOCKET(s, uname, my_uname);
+    SERVICESYSCALL(s, uname, my_uname);
     SERVICESOCKET(s, socket, mysocket);
     SERVICESOCKET(s, bind, bind);
     SERVICESOCKET(s, connect, myconnect);
