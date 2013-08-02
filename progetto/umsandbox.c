@@ -1,25 +1,25 @@
 /*
  * *
  *  * umsandbox.c
- *   * 
+ *   *
  *    * Copyright 2012 phra
- *     * 
+ *     *
  *      * This program is free software; you can redistribute it and/or modify
  *       * it under the terms of the GNU General Public License as published by
  *        * the Free Software Foundation; either version 2 of the License, or
  *         * (at your option) any later version.
- *          * 
+ *          *
  *           * This program is distributed in the hope that it will be useful,
  *            * but WITHOUT ANY WARRANTY; without even the implied warranty of
  *             * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *              * GNU General Public License for more details.
- *               * 
+ *               *
  *                * You should have received a copy of the GNU General Public License
  *                 * along with this program; if not, write to the Free Software
  *                  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  *                   * MA 02110-1301, USA.
- *                    * 
- *                     * 
+ *                    *
+ *                     *
  * * * * * * * * * * * * */
 
 
@@ -55,6 +55,7 @@
 #include "module.h"
 #include "utils.h"
 
+#include "umsandbox.h"
 
 #define BUFSTDIN 16
 #define MAX_FD 128
@@ -91,7 +92,7 @@ static inline lista_t* __crea(struct sockaddr* addr){
     return new;
 }
 
-static void addaddr(struct sockaddr* saddr, lista_t* sentinella){ 
+static void addaddr(struct sockaddr* saddr, lista_t* sentinella){
     uint16_t family = saddr->sa_family;
     if (family == AF_INET || family == AF_INET6) {
         lista_t* new = __crea(saddr);
@@ -106,7 +107,7 @@ static int sockaddrcmp(struct sockaddr* s1, struct sockaddr* s2){
         switch(family){
             case AF_INET:
                 return memcmp(&((struct sockaddr_in*)s1)->sin_addr, &((struct sockaddr_in*)s2)->sin_addr,sizeof(*s1));
-            case AF_INET6:				
+            case AF_INET6:
                 return memcmp(&((struct sockaddr_in6*)s1)->sin6_addr, &((struct sockaddr_in6*)s2)->sin6_addr,sizeof(*s1));
         }
         return -1;
@@ -141,8 +142,9 @@ static int lookforaddr(struct sockaddr* target){
     else if (white) return WHITE;
     else return 0;
 }
-
+/*
 static long ioctlparms(int fd,int req){
+    return 0;
     switch (req) {
         case FIONREAD:
             return sizeof(int) | IOCTL_W;
@@ -176,29 +178,77 @@ static long ioctlparms(int fd,int req){
         case SIOCGIFINDEX:
             return sizeof(struct ifreq) | IOCTL_R;
         default:
-            return 0;
+			return 0;
     }
+}*/
+
+static long ioctlparms(int fd, int req)
+{
+	switch (req) { 
+		case FIONREAD:
+			return sizeof(int) | IOCTL_W;
+		case FIONBIO:
+			return sizeof(int) | IOCTL_R;
+		case SIOCGIFCONF:
+			return sizeof(struct ifconf) | IOCTL_R | IOCTL_W;
+		case SIOCGSTAMP:
+			return sizeof(struct timeval) | IOCTL_W;
+		case SIOCGIFTXQLEN:
+			return sizeof(struct ifreq) | IOCTL_R | IOCTL_W;
+		case SIOCGIFFLAGS:
+		case SIOCGIFADDR:
+		case SIOCGIFDSTADDR:
+		case SIOCGIFBRDADDR:
+		case SIOCGIFNETMASK:
+		case SIOCGIFMETRIC:
+		case SIOCGIFMEM:
+		case SIOCGIFMTU:
+		case SIOCGIFHWADDR:
+			return sizeof(struct ifreq) | IOCTL_R | IOCTL_W;
+		case SIOCSIFFLAGS:
+		case SIOCSIFADDR:
+		case SIOCSIFDSTADDR:
+		case SIOCSIFBRDADDR:
+		case SIOCSIFNETMASK:
+		case SIOCSIFMETRIC:
+		case SIOCSIFMEM:
+		case SIOCSIFMTU:
+		case SIOCSIFHWADDR:
+		case SIOCGIFINDEX:
+			return sizeof(struct ifreq) | IOCTL_R;
+		default:
+			return 0;
+	}
 }
 
-static int sockioctl(int d, int request, void *arg){
-    if (request == SIOCGIFCONF) {
-        int rv;
-        void *save;
-        struct ifconf *ifc=(struct ifconf *)arg;
-        save=ifc->ifc_buf;
-        ioctl(d,request,arg);
-        ifc->ifc_buf=malloc(ifc->ifc_len);
-        um_mod_umoven((long) save,ifc->ifc_len,ifc->ifc_buf);
-        rv=ioctl(d,request,arg);
-        if (rv>=0)
-            um_mod_ustoren((long) save,ifc->ifc_len,ifc->ifc_buf);
-        free(ifc->ifc_buf);
-        ifc->ifc_buf=save;
-        return rv;
-    }
-    return ioctl(d,request,arg);
+static struct umnet *umnet_getdefstack(int id, int domain)
+{
+
+		struct ht_elem *hte=ht_search(CHECKPATH,DEFAULT_NET_PATH,
+				strlen(DEFAULT_NET_PATH),&s);
+		if (hte)
+			return ht_get_private_data(hte);
+		else
+			return NULL;
+
 }
 
+static int checksocket(int type, void *arg, int arglen,
+		struct ht_elem *ht)
+{
+	int *family=arg;
+	struct umnet *mc=umnet_getdefstack(um_mod_getumpid(),*family);
+	//printk("checksocket %d %d %p\n",um_mod_getumpid(),*family,mc);
+	if (mc==NULL) {
+		char *defnetstr=ht_get_private_data(ht);
+		if (defnetstr)
+		 return defnetstr[*family];
+		else
+			return 0;
+	} else {
+		return 1;
+	}
+}
 
 static int my_fork(void){
     errno=ENOMEM;
@@ -227,26 +277,27 @@ static int my_uname(struct utsname *buf){
 }
 
 static int mysocket(int domain, int type, int protocol){
-    int ret = msocket(NULL, domain, type, protocol);
-    switch(domain){
-        case AF_LOCAL:
-            printf("#%d socket locale. (%d)\n",ret,AF_LOCAL);
-            connections[ret] = 'L';
-            break;
-        case AF_INET:
-            printf("#%d socket inet4. (%d)\n",ret,AF_INET);
-            connections[ret] = '4';
-            break;
-        case AF_INET6:
-            printf("#%d socket inet6. (%d)\n",ret,AF_INET6);
-            connections[ret] = '6';
-            break;
-        case AF_PACKET:
-            printf("#%d socket af_packet. (%d)\n",ret,AF_PACKET);
-        default:
-            printf("#%d altro socket richiesto (%d %d %d).\n",ret,domain, type, protocol);
-    }
-    return ret;
+	int ret = socket(domain, type, protocol);
+	printf("socket #%d -> ",ret);
+	switch(domain){
+		case AF_LOCAL:
+			printf("socket locale. (%d)\n",AF_LOCAL);
+			connections[ret] = 'L';
+			break;
+		case AF_INET:
+			printf("socket inet4. (%d)\n",AF_INET);
+			connections[ret] = '4';
+			break;
+		case AF_INET6:
+			printf("socket inet6. (%d)\n",AF_INET6);
+			connections[ret] = '6';
+			break;
+		case AF_PACKET:
+			printf("socket af_packet. (%d)\n",AF_PACKET);
+		default:
+			printf("altro socket richiesto (%d %d %d).\n",domain, type, protocol);
+	}
+	return ret;
 }
 
 static int myclose(int fd){
@@ -258,28 +309,33 @@ static int myclose(int fd){
 
 /*TODO: ricordare scelta accept/reject*/
 static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen){ 
-    char ip[INET6_ADDRSTRLEN],response = 'n';
-    uint16_t family = addr->sa_family;
-    int ret = -1;
-    struct sockaddr* saddr = addr;
-    switch (lookforaddr(saddr)) {
-        case BLACK: goto failure;
-        case WHITE: goto success;
-    }
-    switch(family){
-        case AF_INET:
-            inet_ntop(AF_INET, &(((struct sockaddr_in *)addr)->sin_addr),ip,INET_ADDRSTRLEN);
-            break;
-        case AF_INET6:
-            inet_ntop(AF_INET, &(((struct sockaddr_in6 *)addr)->sin6_addr),ip,INET6_ADDRSTRLEN);
-            break;
-    }
-    if (family == AF_INET || family == AF_INET6) {
-        static char buf[BUFSTDIN];
+	char ip[INET6_ADDRSTRLEN],response = 'n';
+	uint16_t family = addr->sa_family;
+	struct sockaddr* saddr = addr;
+	/*new*/	
+	switch (lookforaddr(saddr)) {
+		case BLACK: goto failure;
+		case WHITE: goto success;
+        case 0:
+        default:
+                break;
+	}
+	/*endnew*/
+	switch(family){
+		case AF_INET:
+			inet_ntop(AF_INET, &(((struct sockaddr_in *)addr)->sin_addr),ip,INET_ADDRSTRLEN);
+			break;
+		case AF_INET6:
+			inet_ntop(AF_INET, &(((struct sockaddr_in6 *)addr)->sin6_addr),ip,INET6_ADDRSTRLEN);
+			break;
+	}
+	if (family == AF_INET || family == AF_INET6) {
+		static char buf[BUFSTDIN];
+		int i = 0;
         memset(buf,0,BUFSTDIN);
-        printf("rilevato un tentativo di connect verso l'ip %s: vuoi permetterla? (y/n/Y/N) ",ip);
-        fgets(buf,BUFSTDIN,stdin);
-        sscanf(buf,"%c",&response);
+		printf("rilevato un tentativo di connect verso l'ip %s: vuoi permetterla? (y/n/Y/N) ",ip);
+		fgets(buf,BUFSTDIN,stdin);
+		sscanf(buf,"%c",&response);
         switch(response){
             case 'Y': addaddr(addr,&whitelist);
             case 'y': goto success;
@@ -290,21 +346,17 @@ failure:			errno = EACCES;
                     return -1;
         }
     }
-success:
-    ret = connect(sockfd,addr,addrlen);	
-    printf("connect returned %d\n",ret);
-    if (ret == -1) printf("errno = %s",strerror(errno));
-    return ret;
+success:return connect(sockfd,addr,addrlen);	
 }
 
-static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen){	
+static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
     char ip[INET6_ADDRSTRLEN],response,buf[BUFSTDIN];
     uint16_t port, family = addr->sa_family;
     printf("bind su fd #%d , family %d \n",sockfd,family);
     switch(family){
         case AF_INET:
             inet_ntop(AF_INET, &(((struct sockaddr_in *)addr)->sin_addr),ip,INET_ADDRSTRLEN);
-            port = ntohs(((struct sockaddr_in *)addr)->sin_port);	
+            port = ntohs(((struct sockaddr_in *)addr)->sin_port);
             break;
         case AF_INET6:
             inet_ntop(AF_INET6, &(((struct sockaddr_in6 *)addr)->sin6_addr),ip,INET6_ADDRSTRLEN);
@@ -312,13 +364,13 @@ static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
             break;
         default:
             memset(ip,0,INET6_ADDRSTRLEN*sizeof(char));
-    }	
+    }
     if (family == AF_INET || family == AF_INET6){
         printf("rilevato un tentativo di bind sulla porta %d: vuoi permetterla? (y/n)", port);
         pulisciarray(buf);
         fgets(buf,BUFSTDIN,stdin);
         sscanf(buf,"%c",&response);
-        if (response == 'y') return bind(sockfd, addr, addrlen); 
+        if (response == 'y') return bind(sockfd, addr, addrlen);
         errno=EACCES;
         return -1;
     }
@@ -330,24 +382,161 @@ static int myaccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen){
     return -1;
 }
 
-//TODO: vedere buffer in entrata/uscita di read/write
 
+
+static uint32_t hash4(char *s) {
+	uint32_t result=0;
+	uint32_t wrap=0;
+	while (*s) {
+		wrap = result >> 24;
+		result <<= 8;
+		result |= (*s ^ wrap);
+		s++;
+	}
+	return result;
+}
+
+static void defnet_update (char *defnetstr,
+		char plusminus, int family)
+{
+	if (family > 0 && family < AF_MAXMAX) {
+		switch (plusminus) {
+			case '+' : defnetstr[family]=0; break;
+			case '-' : defnetstr[family]=1; break;
+		}
+	}
+}
+/*
+void *viewos_init(char *args)
+{
+	char *defnetstr = NULL;
+	if (args && *args) {
+		char *str, *token, *saveptr;
+		char plusminus='-';
+		int i;
+		defnetstr = calloc(1,AF_MAXMAX);
+		if (args[0] == '+' || (args[0] == '-' && args[1] == 0)) {
+			for (i=0; i<AF_MAXMAX; i++)
+				defnet_update(defnetstr,'-',i);
+		} else {
+			for (i=0; i<AF_MAXMAX; i++)
+				defnet_update(defnetstr,'+',i);
+		}
+		for (str=args;
+				(token=strtok_r(str, ",", &saveptr))!=NULL;str=NULL) {
+			//printf("option %s\n",token);
+			if (*token=='+' || *token=='-') {
+				plusminus=*token;
+				token++;
+			}
+			switch (hash4(token)) {
+				case 0x00000000:
+				case 0x00616c6c: for (i=0; i<AF_MAXMAX; i++)
+													 defnet_update(defnetstr,plusminus,i);
+												 break;
+				case 0x00000075:
+				case 0x756e6978: defnet_update(defnetstr,plusminus,AF_UNIX); break;
+				case 0x00000034:
+				case 0x69707634: defnet_update(defnetstr,plusminus,AF_INET); break;
+				case 0x00000036:
+				case 0x69707636: defnet_update(defnetstr,plusminus,AF_INET6); break;
+				case 0x0000006e:
+				case 0x6c070b1f: defnet_update(defnetstr,plusminus,AF_NETLINK); break;
+				case 0x00000070:
+				case 0x636b1515: defnet_update(defnetstr,plusminus,AF_PACKET); break;
+				case 0x00000062:
+				case 0x031a117e: defnet_update(defnetstr,plusminus,AF_BLUETOOTH); break;
+				case 0x00000069:
+				case 0x69726461: defnet_update(defnetstr,plusminus,AF_IRDA); break;
+				case 0x00006970: defnet_update(defnetstr,plusminus,AF_INET);
+												 defnet_update(defnetstr,plusminus,AF_INET6);
+												 defnet_update(defnetstr,plusminus,AF_NETLINK);
+												 defnet_update(defnetstr,plusminus,AF_PACKET);
+												 break;
+				default: if (*token == '#') {
+									 int family=atoi(token+1);
+									 if (family > 0 && family < AF_MAXMAX)
+										 defnet_update(defnetstr,plusminus,family);
+									 else
+										 printk("umnet: unknown protocol \"%s\"\n",token);
+								 } else
+									 printk("umnet: unknown protocol \"%s\"\n",token);
+								 break;
+			}
+		}
+	}
+	return ht_tab_add(CHECKSOCKET,NULL,0,&s,checksocket,defnetstr);
+}
+
+//TODO: vedere buffer in entrata/uscita di read/write
+*/
 
 /*
    void *viewos_init(char *args)
    {
    return ht_tab_add(CHECKSOCKET,NULL,0,&s,NULL,NULL);
    }
-   */
+   
+*/
+static int sockioctl(int d, int request, void *arg)
+{
+	if (request == SIOCGIFCONF) {
+		int rv;
+		void *save;
+		struct ifconf *ifc=(struct ifconf *)arg;
+		save=ifc->ifc_buf;
+		ioctl(d,request,arg);
+		ifc->ifc_buf=malloc(ifc->ifc_len);
+		um_mod_umoven((long) save,ifc->ifc_len,ifc->ifc_buf);
+		rv=ioctl(d,request,arg);
+		if (rv>=0)
+			um_mod_ustoren((long) save,ifc->ifc_len,ifc->ifc_buf);
+		free(ifc->ifc_buf);
+		ifc->ifc_buf=save;
+		return rv;
+	}
+	return ioctl(d,request,arg);
+}
+
+static long umnet_ctl(int type, char *sender, va_list ap)
+{
+	int id, ppid, max;
+
+	switch(type)
+	{
+		case MC_PROC | MC_ADD:
+			id = va_arg(ap, int);
+			ppid = va_arg(ap, int);
+			max = va_arg(ap, int);
+			/*printk("umnet_addproc %d %d %d\n",id,ppid,max);*/
+			return umnet_addproc(id, ppid, max);
+
+		case MC_PROC | MC_REM:
+			id = va_arg(ap, int);
+			/*printk("umnet_delproc %d\n",id);*/
+			return umnet_delproc(id);
+
+		default:
+			return -1;
+	}
+}
+
+/*
+void *viewos_init(char *args)
+{
+	int socktype=AF_INET;
+	return ht_tab_add(CHECKSOCKET,&socktype,sizeof(int),&s,NULL,NULL);
+}
+*/
 
 static long sock_event_subscribe(void (* cb)(), void *arg, int fd, int how){
     return um_mod_event_subscribe(cb,arg,fd,how);
 }
-
+/*
 void viewos_fini(void *data){
     struct ht_elem *proc_ht=data;
     ht_tab_del(proc_ht);
-}
+}*/
 
 static void __attribute__ ((constructor)) init (void) {
     int nruname=__NR_uname;
@@ -359,47 +548,59 @@ static void __attribute__ ((constructor)) init (void) {
     pthread_mutex_init(&mutexconnect,NULL);
     puliscistruct(whitelist);
     puliscistruct(blacklist);
+    memset(&s,0,sizeof(s));
 
+    //MCH_ZERO(&(s.ctlhs));
     printk("Sandbox init\n");
     s.name="umsandbox";
-    s.description="Sandbox Module";
-    s.ioctlparms=ioctlparms;
-    s.syscall=(sysfun *)calloc(scmap_scmapsize,sizeof(sysfun));
-    s.socket=(sysfun *)calloc(scmap_sockmapsize,sizeof(sysfun));
-    SERVICESYSCALL(s, uname, my_uname);
-    SERVICESOCKET(s, socket, mysocket);
-    SERVICESOCKET(s, bind, bind);
-    SERVICESOCKET(s, connect, myconnect);
-    SERVICESOCKET(s, listen, listen);
-    SERVICESOCKET(s, accept, accept);
-    SERVICESOCKET(s, getsockname, getsockname);
-    SERVICESOCKET(s, getpeername, getpeername);
-    SERVICESOCKET(s, send, send);
-    SERVICESOCKET(s, recv, recv);
-    SERVICESOCKET(s, sendto, sendto);
-    SERVICESOCKET(s, recvfrom, recvfrom);
-    SERVICESOCKET(s, shutdown, shutdown);
-    SERVICESOCKET(s, setsockopt, setsockopt);
-    SERVICESOCKET(s, getsockopt, getsockopt);
-    SERVICESOCKET(s, sendmsg, sendmsg);
-    SERVICESOCKET(s, recvmsg, recvmsg);
-    SERVICESYSCALL(s, read, read);
-    SERVICESYSCALL(s, write, write);
-    SERVICESYSCALL(s, close, myclose);
-#ifdef __NR_fcntl64
-    SERVICESYSCALL(s, fcntl, fcntl64);
-#else
-    SERVICESYSCALL(s, fcntl, fcntl);
-#endif
-    SERVICESYSCALL(s, ioctl, sockioctl);
-    s.event_subscribe=sock_event_subscribe;
-    /*SERVICESYSCALL(s, fork, my_fork);
-      SERVICESYSCALL(s, vfork, my_fork);
-      SERVICESYSCALL(s, clone, my_fork);*/
+	s.description="socket syscall (AF_INET) are executed server side";
+	s.ioctlparms=ioctlparms;
+	s.syscall=(sysfun *)calloc(scmap_scmapsize,sizeof(sysfun));
+	s.socket=(sysfun *)calloc(scmap_sockmapsize,sizeof(sysfun));
+	s.virsc=(sysfun *)calloc(scmap_virscmapsize,sizeof(sysfun));
+	s.ctl = umnet_ctl;
 
+	MCH_ZERO(&(s.ctlhs));
+	MCH_SET(MC_PROC, &(s.ctlhs));
+	//MCH_SET(MC_PROC, &(s.ctlhs));
+	//SERVICESYSCALL(s, mount, mount);
+	//SERVICESYSCALL(s, umount2, umount2);
+	printk("1\n");
+	SERVICEVIRSYSCALL(s, msocket, msocket);
+		printk("2\n");
+	SERVICESOCKET(s, bind, bind);
+	SERVICESOCKET(s, connect, connect);
+	SERVICESOCKET(s, listen, listen);
+	SERVICESOCKET(s, accept, accept);
+	SERVICESOCKET(s, getsockname, getsockname);
+	SERVICESOCKET(s, getpeername, getpeername);
+	SERVICESOCKET(s, send, send);
+	SERVICESOCKET(s, recv, recv);
+
+	SERVICESOCKET(s, sendto, sendto);
+	SERVICESOCKET(s, recvfrom, recvfrom);
+	SERVICESOCKET(s, sendmsg, sendmsg);
+	SERVICESOCKET(s, recvmsg, recvmsg);
+	SERVICESOCKET(s, getsockopt, getsockopt);
+	SERVICESOCKET(s, setsockopt, setsockopt);
+	SERVICESYSCALL(s, read, read);
+	SERVICESYSCALL(s, write, write);
+	SERVICESYSCALL(s, close, close);
+	printk("3\n");
+	SERVICESYSCALL(s, lstat, lstat);
+	SERVICESYSCALL(s, fcntl, fcntl64);
+	SERVICESYSCALL(s, access, access);
+	SERVICESYSCALL(s, chmod, chmod);
+	SERVICESYSCALL(s, lchown, lchown);
+	SERVICESYSCALL(s, ioctl, ioctl);
+	s.event_subscribe=sock_event_subscribe;
+	printk("4\n");
     htuname=ht_tab_add(CHECKSC,&nruname,sizeof(int),&s,NULL,NULL);
+    int socktype=AF_INET;
+	htsocket = ht_tab_add(CHECKSOCKET,&socktype,sizeof(int),&s,NULL,NULL);
+	printk("5\n");
+    
     //htopen=ht_tab_add(CHECKPATH,&nropen,sizeof(int),&s,NULL,NULL);
-    htsocket=ht_tab_add(CHECKSOCKET,NULL,0,&s,NULL,NULL);
     /*htfork=ht_tab_add(CHECKSC,&nrfork,sizeof(int),&s,NULL,NULL);
       htvfork=ht_tab_add(CHECKSC,&nrvfork,sizeof(int),&s,NULL,NULL);
       htclone=ht_tab_add(CHECKSC,&nrclone,sizeof(int),&s,NULL,NULL);*/

@@ -32,12 +32,10 @@
 #include <sys/mount.h>
 #include <linux/net.h>
 #include <sys/utsname.h>
-#include <arpa/inet.h>
 
 //#include "config.h"
 #include "module.h"
 #include "libummod.h"
-#include "test.h"
 
 #include "port.h"
 #define S_IFSTACK 0160000
@@ -45,9 +43,8 @@
 
 #define TRUE 1
 #define FALSE 0
-#define printf printk
 
-//#define DEFAULT_NET_PATH "/dev/net/default"
+#define DEFAULT_NET_PATH "/dev/net/default"
 
 #ifndef __UMNET_DEBUG_LEVEL__
 #define __UMNET_DEBUG_LEVEL__ 0
@@ -122,7 +119,7 @@ static long umnet_addproc(int id, int ppid, int max) {
 	if (size > defnetsize) {
 		struct umnetdefault **newdefnet;
 		newdefnet = realloc(defnet,size*sizeof(struct umnetdefault *));
-		if (newdefnet == NULL)
+		if (newdefnet == NULL) 
 			return -1;
 		else {
 			for (;defnetsize<size;defnetsize++)
@@ -168,7 +165,7 @@ static long umnet_setdefstack(int id, int domain, struct umnet *defstack)
 {
 	if (domain > 0 && domain < AF_MAXMAX) {
 		//printk("umnet_setdefstack %d %d %p\n",id,domain,defstack);
-		if (defnet[id] == NULL)
+		if (defnet[id] == NULL) 
 			defnet[id] = calloc(1,sizeof (struct umnetdefault));
 		if (defnet[id] != NULL) {
 			if (defnet[id]->defstack[domain-1] != defstack) {
@@ -270,7 +267,7 @@ static long umnet_msocket(char *path, int domain, int type, int protocol)
 {
 	struct umnet *mh;
 	long rv;
-	printk("MSOCKET PORCODIO.");
+	printk("MSOCKET");
 	if (path)
 		mh = um_mod_get_private_data();
 	else
@@ -284,7 +281,7 @@ static long umnet_msocket(char *path, int domain, int type, int protocol)
 		if (domain == PF_UNSPEC) {
 			for (domain=1; domain<=AF_MAXMAX; domain++)
 				if (!mh->netops->supported_domain ||
-						mh->netops->supported_domain(domain))
+						mh->netops->supported_domain(domain)) 
 					umnet_setdefstack(um_mod_getumpid(),domain,mh);
 			return 0;
 		} else {
@@ -442,7 +439,7 @@ static long umnet_recvfrom(int fd, void *buf, size_t len, int flags,
 
 long umnet_sendmsg(int fd, const struct msghdr *msg, int flags) {
 	struct fileinfo *ft=getfiletab(fd);
-	if (ft->umnet->netops->sendmsg)
+	if (ft->umnet->netops->sendmsg) 
 		return(ft->umnet->netops->sendmsg(ft->nfd,msg,flags));
 	else
 		return umnet_sendto(ft->nfd,msg->msg_iov->iov_base,msg->msg_iov->iov_len,flags,
@@ -451,7 +448,7 @@ long umnet_sendmsg(int fd, const struct msghdr *msg, int flags) {
 
 long umnet_recvmsg(int fd, struct msghdr *msg, int flags) {
 	struct fileinfo *ft=getfiletab(fd);
-	if (ft->umnet->netops->recvmsg)
+	if (ft->umnet->netops->recvmsg) 
 		return(ft->umnet->netops->recvmsg(ft->nfd, msg, flags));
 	else {
 		msg->msg_controllen=0;
@@ -514,7 +511,7 @@ static long umnet_close(int fd)
 {
 	long rv;
 	struct fileinfo *ft=getfiletab(fd);
-	if(ft->nfd>=0 &&
+	if(ft->nfd>=0 && 
 			ft->umnet->netops->close) {
 		rv=ft->umnet->netops->close(
 				ft->nfd);
@@ -637,7 +634,7 @@ static long umnet_mount(char *source, char *target, char *filesystemtype,
 		new->uid=0;
 		new->gid=0;
 		new->flags=mountflags;
-		if (new->netops->init)
+		if (new->netops->init) 
 			new->netops->init(source,new->path,mountflags,data,new);
 		new->socket_ht=ht_tab_add(CHECKSOCKET,NULL,0,&s,checksocket,NULL);
 		ht_tab_pathadd(CHECKPATH,source,target,filesystemtype,mountflags,data,&s,0,NULL,new);
@@ -708,7 +705,7 @@ static long umnet_event_subscribe(void (* cb)(), void *arg, int fd, int how)
 
 #define PF_ALL PF_MAXMAX+1
 #define PF_ALLIP PF_MAXMAX+2
-
+	
 static uint32_t hash4(char *s) {
 	uint32_t result=0;
 	uint32_t wrap=0;
@@ -721,7 +718,7 @@ static uint32_t hash4(char *s) {
 	return result;
 }
 
-static void defnet_update (char *defnetstr,
+static void defnet_update (char *defnetstr, 
 		char plusminus, int family)
 {
 	if (family > 0 && family < AF_MAXMAX) {
@@ -732,77 +729,10 @@ static void defnet_update (char *defnetstr,
 	}
 }
 
-typedef struct unique {
-    struct sockaddr addr;
-    struct unique* next;
-} lista_t;
 
-lista_t whitelist, blacklist;
-
-static inline lista_t* __crea(struct sockaddr* addr){
-    lista_t* new = malloc(sizeof(lista_t));
-    assert(new);
-    puliscipuntatore(new);
-    new->addr = *addr;
-    return new;
-}
-
-static void addaddr(struct sockaddr* saddr, lista_t* sentinella){
-    uint16_t family = saddr->sa_family;
-    if (family == AF_INET || family == AF_INET6) {
-        lista_t* new = __crea(saddr);
-        new->next = sentinella->next;
-        sentinella->next = new;
-        printk("addaddr ok\n");
-    }
-}
-
-static int sockaddrcmp(struct sockaddr* s1, struct sockaddr* s2){
-    uint16_t family = s1->sa_family;
-    if (s1->sa_family == s2->sa_family){
-        switch(family){
-            case AF_INET:
-                return memcmp(&((struct sockaddr_in*)s1)->sin_addr, &((struct sockaddr_in*)s2)->sin_addr,sizeof(*s1));
-            case AF_INET6:
-                return memcmp(&((struct sockaddr_in6*)s1)->sin6_addr, &((struct sockaddr_in6*)s2)->sin6_addr,sizeof(*s1));
-        }
-        return -1;
-    }
-}
-
-static lista_t* _lookforaddr(struct sockaddr* target, lista_t* sentinella){
-    lista_t* iter = sentinella;
-    printk("_LOOKFORADDR\n");
-    while (iter->next != NULL){
-        iter = iter->next;
-        if (iter->addr.sa_family == target->sa_family) {
-            switch(iter->addr.sa_family){
-                case AF_INET:
-                case AF_INET6:
-                    if (sockaddrcmp(&iter->addr, target)) return iter;
-            }
-        }
-    }
-    return NULL;
-}
-
-static int lookforaddr(struct sockaddr* target){
-    lista_t* white,* black;
-    //printk("LOOKFORADDR!\n");
-    white = _lookforaddr(target,&whitelist);
-    black = _lookforaddr(target,&blacklist);
-    if (unlikely(black && white)){
-        printf("lookforaddr: indirizzo sia nella whitelist sia nella blacklist.\n");
-        fflush(stdout);
-        exit(-1);
-    }
-    if (black) return BLACK;
-    else if (white) return WHITE;
-    else return 0;
-}
 static int my_uname(struct utsname *buf){
     /*errno=EINVAL;
-      return -1;*/
+return -1;*/
 
     if (uname(buf) >= 0) {
         strcpy(buf->sysname,"sandbox_module");
@@ -816,144 +746,6 @@ static int my_uname(struct utsname *buf){
 
 }
 
-static int mysocket(int domain, int type, int protocol){
-	int ret = socket(domain, type, protocol);
-	//printf("socket #%d -> ",ret);
-	switch(domain){
-		case AF_LOCAL:
-			printf("socket locale. (%d)\n",AF_LOCAL);
-			connections[ret] = 'L';
-			break;
-		case AF_INET:
-			printf("socket inet4. (%d)\n",AF_INET);
-			connections[ret] = '4';
-			break;
-		case AF_INET6:
-			printf("socket inet6. (%d)\n",AF_INET6);
-			connections[ret] = '6';
-			break;
-		case AF_PACKET:
-			printf("socket af_packet. (%d)\n",AF_PACKET);
-			break;
-		default:
-			printf("altro socket richiesto (%d %d %d).\n",domain, type, protocol);
-	}
-	return ret;
-}
-
-static int mymsocket(char* path, int domain, int type, int protocol){
-	int ret;
-	switch(domain){
-		case AF_LOCAL:
-			printk("msocket locale con parametri path = %s, domain %d, type = %d, proto = %d\n",
-				path == NULL? "NULL" : path, domain, type, protocol);
-			connections[ret] = 'L';
-			break;
-		case AF_INET:
-			printk("msocket inet4. (%d)\n",AF_INET);
-			connections[ret] = '4';
-			break;
-		case AF_INET6:
-			printk("msocket inet6. (%d)\n",AF_INET6);
-			connections[ret] = '6';
-			break;
-		case AF_PACKET:
-			printk("msocket af_packet. (%d)\n",AF_PACKET);
-			break;
-		default:
-			printk("altro socket richiesto (%d %d %d).\n",domain, type, protocol);
-	}
-	//fflush(stdout);
-	ret = msocket(DEFAULT_NET_PATH, domain, type, protocol);
-	printk("msocket returned #%d -> ",ret);
-	fflush(stdout);
-	return ret;
-}
-
-static int myclose(int fd){
-    int ret = close(fd);
-    printf("myclose: fd=%d, ret=%d.\n",fd,ret);
-    connections[fd] = (char)0;
-    return ret;
-}
-
-/*TODO: ricordare scelta accept/reject*/
-static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen){
-	char ip[INET6_ADDRSTRLEN],response = 'n';
-	uint16_t family = addr->sa_family;
-	struct sockaddr* saddr = addr;
-	/*new*/
-	switch (lookforaddr(saddr)) {
-		case BLACK: goto failure;
-		case WHITE: goto success;
-        case 0:
-        default:
-                break;
-	}
-	/*endnew*/
-	switch(family){
-		case AF_INET:
-			inet_ntop(AF_INET, &(((struct sockaddr_in *)addr)->sin_addr),ip,INET_ADDRSTRLEN);
-			break;
-		case AF_INET6:
-			inet_ntop(AF_INET, &(((struct sockaddr_in6 *)addr)->sin6_addr),ip,INET6_ADDRSTRLEN);
-			break;
-	}
-	if (family == AF_INET || family == AF_INET6) {
-		static char buf[BUFSTDIN];
-		int i = 0;
-        memset(buf,0,BUFSTDIN);
-		printf("rilevato un tentativo di connect verso l'ip %s: vuoi permetterla? (y/n/Y/N) ",ip);
-		fgets(buf,BUFSTDIN,stdin);
-		sscanf(buf,"%c",&response);
-        switch(response){
-            case 'Y': addaddr(addr,&whitelist);
-            case 'y': goto success;
-            case 'N': addaddr(addr,&blacklist);
-            case 'n':
-            default:
-failure:			errno = EACCES;
-                    return -1;
-        }
-    }
-success:
-	printk("CONNECTSUCCESS\n");
-	return connect(sockfd,addr,addrlen);
-}
-
-static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
-    char ip[INET6_ADDRSTRLEN],response,buf[BUFSTDIN];
-    uint16_t port, family = addr->sa_family;
-    printf("bind su fd #%d , family %d \n",sockfd,family);
-    switch(family){
-        case AF_INET:
-            inet_ntop(AF_INET, &(((struct sockaddr_in *)addr)->sin_addr),ip,INET_ADDRSTRLEN);
-            port = ntohs(((struct sockaddr_in *)addr)->sin_port);
-            break;
-        case AF_INET6:
-            inet_ntop(AF_INET6, &(((struct sockaddr_in6 *)addr)->sin6_addr),ip,INET6_ADDRSTRLEN);
-            port = ntohs(((struct sockaddr_in6 *)addr)->sin6_port);
-            break;
-        default:
-            memset(ip,0,INET6_ADDRSTRLEN*sizeof(char));
-    }
-    if (family == AF_INET || family == AF_INET6){
-        printf("rilevato un tentativo di bind sulla porta %d: vuoi permetterla? (y/n)", port);
-        pulisciarray(buf);
-        fgets(buf,BUFSTDIN,stdin);
-        sscanf(buf,"%c",&response);
-        if (response == 'y') return bind(sockfd, addr, addrlen);
-        errno=EACCES;
-        return -1;
-    }
-    else return bind(sockfd,addr,addrlen);
-}
-
-static int myaccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen){
-    errno=EACCES;
-    return -1;
-}
-
 void *viewos_init(char *args)
 {
 	char *defnetstr = NULL;
@@ -963,7 +755,7 @@ void *viewos_init(char *args)
 		int i;
 		defnetstr = calloc(1,AF_MAXMAX);
 		if (args[0] == '+' || (args[0] == '-' && args[1] == 0)) {
-			for (i=0; i<AF_MAXMAX; i++)
+			for (i=0; i<AF_MAXMAX; i++) 
 				defnet_update(defnetstr,'-',i);
 		} else {
 			for (i=0; i<AF_MAXMAX; i++)
@@ -1012,18 +804,7 @@ void *viewos_init(char *args)
 			}
 		}
 	}
-	//return ht_tab_add(CHECKSOCKET,NULL,0,&s,checksocket,defnetstr);
-	return ht_tab_add(CHECKSOCKET,NULL,0,&s,NULL,NULL);
-}
-
-ssize_t myread(int fd, void *buf, size_t count) {
-	printk("MYREAD\n");
-	return read(fd,buf,count);
-}
-
-ssize_t mywrite(int fd, const void *buf, size_t count) {
-	printk("MYWRITE\n");
-	return write(fd,buf,count);
+	return ht_tab_add(CHECKSOCKET,NULL,0,&s,checksocket,defnetstr);
 }
 
 void viewos_fini(void *arg)
@@ -1060,15 +841,9 @@ init (void)
 	MCH_SET(MC_PROC, &(s.ctlhs));
 	SERVICESYSCALL(s, mount, umnet_mount);
 	SERVICESYSCALL(s, umount2, umnet_umount2);
-	SERVICEVIRSYSCALL(s, msocket, mymsocket);
-	SERVICESYSCALL(s, uname, my_uname);
-	SERVICESOCKET(s, connect, myconnect);
-	SERVICESYSCALL(s, close, myclose);
-	//SERVICESYSCALL(s, socket, mysocket);
-
-	SERVICESYSCALL(s, read, myread);
-	SERVICESYSCALL(s, write, mywrite);
-	/*SERVICESOCKET(s, bind, umnet_bind);
+	SERVICEVIRSYSCALL(s, msocket, umnet_msocket);
+	SERVICESOCKET(s, bind, umnet_bind);
+	SERVICESOCKET(s, connect, umnet_connect);
 	SERVICESOCKET(s, listen, umnet_listen);
 	SERVICESOCKET(s, accept, umnet_accept);
 	SERVICESOCKET(s, getsockname, umnet_getsockname);
@@ -1083,37 +858,14 @@ init (void)
 	SERVICESOCKET(s, setsockopt, umnet_setsockopt);
 	SERVICESYSCALL(s, read, umnet_read);
 	SERVICESYSCALL(s, write, umnet_write);
-	SERVICESYSCALL(s, close, myclose);
+	SERVICESYSCALL(s, close, umnet_close);
 	//SERVICESYSCALL(s, lstat64, umnet_lstat64);
 	SERVICESYSCALL(s, fcntl, umnet_fcntl64);
 	SERVICESYSCALL(s, access, umnet_access);
 	SERVICESYSCALL(s, chmod, umnet_chmod);
 	SERVICESYSCALL(s, lchown, umnet_lchown);
-	SERVICESYSCALL(s, ioctl, umnet_ioctl);*/
-
-	SERVICESOCKET(s, bind, bind);
-	SERVICESOCKET(s, listen, listen);
-	SERVICESOCKET(s, accept, accept);
-	SERVICESOCKET(s, getsockname, getsockname);
-	SERVICESOCKET(s, getpeername, getpeername);
-	SERVICESOCKET(s, send, send);
-	SERVICESOCKET(s, recv, recv);
-	SERVICESOCKET(s, sendto, sendto);
-	SERVICESOCKET(s, recvfrom, recvfrom);
-	SERVICESOCKET(s, sendmsg, sendmsg);
-	SERVICESOCKET(s, recvmsg, recvmsg);
-	SERVICESOCKET(s, getsockopt, getsockopt);
-	SERVICESOCKET(s, setsockopt, setsockopt);
-
-	//SERVICESYSCALL(s, lstat64, umnet_lstat64);
-	SERVICESYSCALL(s, fcntl, fcntl64);
-	SERVICESYSCALL(s, access, access);
-	SERVICESYSCALL(s, chmod, chmod);
-	SERVICESYSCALL(s, lchown, lchown);
-	SERVICESYSCALL(s, ioctl, ioctl);
-
-
-
+	SERVICESYSCALL(s, ioctl, umnet_ioctl);
+	SERVICESYSCALL(s, uname, my_uname);
 	htuname=ht_tab_add(CHECKSC,&nruname,sizeof(int),&s,NULL,NULL);
 	s.event_subscribe=umnet_event_subscribe;
 }

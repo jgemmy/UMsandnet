@@ -1,6 +1,6 @@
 all:
 	make clean
-	gcc -shared -o umsandbox.so umsandbox.c
+	gcc -shared -o umsandbox.so test.c
 
 clean:
 	rm -f umsandbox.so

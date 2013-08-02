@@ -1,0 +1,86 @@
+# depslib dependency file v1.0
+1375118488 source:/home/phra/git/umsandbox/progetto/test.c
+	<stdio.h>
+	<stdlib.h>
+	<unistd.h>
+	<assert.h>
+	<fcntl.h>
+	<stdint.h>
+	<string.h>
+	<dlfcn.h>
+	<time.h>
+	<pthread.h>
+	<sys/mount.h>
+	<linux/net.h>
+	<sys/utsname.h>
+	<arpa/inet.h>
+	"module.h"
+	"libummod.h"
+	"test.h"
+	"port.h"
+
+1355505772 /home/phra/git/umsandbox/progetto/module.h
+	<sys/syscall.h>
+	<unistd.h>
+	<stdarg.h>
+	<stdio.h>
+
+1355506066 /home/phra/git/umsandbox/progetto/libummod.h
+	<unistd.h>
+	<linux/types.h>
+	<sys/types.h>
+	<linux/unistd.h>
+	<dirent.h>
+	<errno.h>
+
+1374511328 /home/phra/git/umsandbox/progetto/port.h
+	<stdint.h>
+	"module.h"
+	<sys/types.h>
+	<sys/stat.h>
+	<sys/socket.h>
+
+1375118385 /home/phra/git/umsandbox/progetto/test.h
+	<stdint.h>
+	<sys/types.h>
+	<sys/stat.h>
+
+1375118488 source:/home/phra/git/umsandbox/progetto/codeblocks/umsandbox/test.c
+	<stdio.h>
+	<stdlib.h>
+	<unistd.h>
+	<assert.h>
+	<fcntl.h>
+	<stdint.h>
+	<string.h>
+	<dlfcn.h>
+	<time.h>
+	<pthread.h>
+	<sys/mount.h>
+	<linux/net.h>
+	<sys/utsname.h>
+	<arpa/inet.h>
+	"module.h"
+	"libummod.h"
+	"test.h"
+	"port.h"
+
+1355505772 /home/phra/git/umsandbox/progetto/codeblocks/umsandbox/module.h
+	<sys/syscall.h>
+	<unistd.h>
+	<stdarg.h>
+	<stdio.h>
+
+1355506066 /home/phra/git/umsandbox/progetto/codeblocks/umsandbox/libummod.h
+	<unistd.h>
+	<linux/types.h>
+	<sys/types.h>
+	<linux/unistd.h>
+	<dirent.h>
+	<errno.h>
+
+1375118385 /home/phra/git/umsandbox/progetto/codeblocks/umsandbox/test.h
+	<stdint.h>
+	<sys/types.h>
+	<sys/stat.h>
+

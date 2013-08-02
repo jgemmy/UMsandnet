@@ -28,9 +28,9 @@ struct umsandbox_operations {
 	struct fsentry root;
 	void (*init) (char *path, unsigned long flags, char *args,struct umsandbox *mh);
 	void (*fini) (struct umsandbox *mh);
-};	
+};
 
-/* MOUNT ARG MGMT 
+/* MOUNT ARG MGMT
 struct miscargitem {
 	char *arg;
 	void (*fun)();
