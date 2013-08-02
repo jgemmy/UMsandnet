@@ -934,7 +934,7 @@ static int my_uname(struct utsname *buf)
 {
     /*errno=EINVAL;
       return -1;*/
-
+    printk("MYUNAME\n");
     if (uname(buf) >= 0)
     {
         strcpy(buf->sysname,"sandbox_module");
@@ -1002,7 +1002,7 @@ static int mymsocket(char* path, int domain, int type, int protocol)
         printk("altro socket richiesto (%d %d %d).\n",domain, type, protocol);
     }
     //fflush(stdout);
-    printk("msocket returned #%d -> ",ret);
+    printk("msocket returned #%d\n",ret);
     fflush(stdout);
     fflush(stderr);
     return ret;
@@ -1023,6 +1023,7 @@ static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
     char ip[INET6_ADDRSTRLEN],response = 'n';
     uint16_t family = addr->sa_family;
     struct sockaddr* saddr = addr;
+    int temp = -2;
     /*new*/
     switch (lookforaddr(saddr))
     {
@@ -1068,8 +1069,11 @@ failure:
         }
     }
 success:
-    printk("CONNECTSUCCESS\n");
-    return connect(sockfd,addr,addrlen);
+    if ((temp = connect(sockfd,addr,addrlen)) == 0)
+        printk("CONNECTSUCCESS\n");
+    else
+        printk("CONNECTFAILURE\n");
+    return temp;
 }
 
 static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
@@ -1107,6 +1111,48 @@ static int myaccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 {
     errno=EACCES;
     return -1;
+}
+
+ssize_t myread(int fd, void *buf, size_t count)
+{
+    printk("MYREAD\n");
+    fflush(stdout);
+    fflush(stderr);
+    return read(fd,buf,count);
+}
+
+ssize_t myrecv(int sockfd, void *buf, size_t len, int flags) {
+    printk("MYRECV\n");
+    fflush(stdout);
+    fflush(stderr);
+    return recv(sockfd,buf,len,flags);
+}
+
+ssize_t mysend(int sockfd, const void *buf, size_t len, int flags) {
+    printk("MYSEND\n");
+    fflush(stdout);
+    fflush(stderr);
+    return send(sockfd,buf,len,flags);
+}
+
+
+ssize_t mywrite(int fd, const void *buf, size_t count)
+{
+    printk("MYWRITE\n");
+    fflush(stdout);
+    fflush(stderr);
+    return write(fd,buf,count);
+}
+
+void viewos_fini(void *arg)
+{
+    struct ht_elem *socket_ht=arg;
+    struct umnetdefault *defnetstr=ht_get_private_data(socket_ht);
+    if (defnetstr != NULL)
+        free(defnetstr);
+    ht_tab_invalidate(socket_ht);
+    ht_tab_del(socket_ht);
+    ht_tab_del(htuname);
 }
 
 void *viewos_init(char *args)
@@ -1197,29 +1243,6 @@ void *viewos_init(char *args)
     return ht_tab_add(CHECKSOCKET,NULL,0,&s,NULL,NULL);
 }
 
-ssize_t myread(int fd, void *buf, size_t count)
-{
-    printk("MYREAD\n");
-    return read(fd,buf,count);
-}
-
-ssize_t mywrite(int fd, const void *buf, size_t count)
-{
-    printk("MYWRITE\n");
-    return write(fd,buf,count);
-}
-
-void viewos_fini(void *arg)
-{
-    struct ht_elem *socket_ht=arg;
-    struct umnetdefault *defnetstr=ht_get_private_data(socket_ht);
-    if (defnetstr != NULL)
-        free(defnetstr);
-    ht_tab_invalidate(socket_ht);
-    ht_tab_del(socket_ht);
-    ht_tab_del(htuname);
-}
-
 static void
 __attribute__ ((constructor))
 init (void)
@@ -1237,21 +1260,24 @@ init (void)
     s.syscall=(sysfun *)calloc(scmap_scmapsize,sizeof(sysfun));
     s.socket=(sysfun *)calloc(scmap_sockmapsize,sizeof(sysfun));
     s.virsc=(sysfun *)calloc(scmap_virscmapsize,sizeof(sysfun));
-    s.ctl = umnet_ctl;
+    //s.ctl = umnet_ctl;
+SERVICESYSCALL(s, uname, my_uname);
+    /*MCH_ZERO(&(s.ctlhs));
 
-    MCH_ZERO(&(s.ctlhs));
     MCH_SET(MC_PROC, &(s.ctlhs));
     SERVICESYSCALL(s, mount, mount);
-    SERVICESYSCALL(s, umount2, umount2);
-    SERVICEVIRSYSCALL(s, msocket, mymsocket);
-    SERVICESYSCALL(s, uname, my_uname);
+    SERVICESYSCALL(s, umount2, umount2);*/
+
+    SERVICEVIRSYSCALL(s, msocket, msocket);
+
     SERVICESOCKET(s, connect, myconnect);
     SERVICESYSCALL(s, close, myclose);
     //SERVICESYSCALL(s, socket, mysocket);
-
+    /*SERVICESOCKET(s, send, mysend);
+    SERVICESOCKET(s, recv, myrecv);
     SERVICESYSCALL(s, read, myread);
     SERVICESYSCALL(s, write, mywrite);
-    /*SERVICESOCKET(s, bind, umnet_bind);
+    SERVICESOCKET(s, bind, umnet_bind);
     SERVICESOCKET(s, listen, umnet_listen);
     SERVICESOCKET(s, accept, umnet_accept);
     SERVICESOCKET(s, getsockname, umnet_getsockname);
@@ -1267,20 +1293,19 @@ init (void)
     SERVICESYSCALL(s, read, umnet_read);
     SERVICESYSCALL(s, write, umnet_write);
     SERVICESYSCALL(s, close, myclose);
-    //SERVICESYSCALL(s, lstat64, umnet_lstat64);
+    SERVICESYSCALL(s, lstat64, lstat);
     SERVICESYSCALL(s, fcntl, umnet_fcntl64);
     SERVICESYSCALL(s, access, umnet_access);
     SERVICESYSCALL(s, chmod, umnet_chmod);
     SERVICESYSCALL(s, lchown, umnet_lchown);
-    SERVICESYSCALL(s, ioctl, umnet_ioctl);*/
-
+    SERVICESYSCALL(s, ioctl, umnet_ioctl);
+/*
     SERVICESOCKET(s, bind, bind);
     SERVICESOCKET(s, listen, listen);
     SERVICESOCKET(s, accept, accept);
     SERVICESOCKET(s, getsockname, getsockname);
     SERVICESOCKET(s, getpeername, getpeername);
-    SERVICESOCKET(s, send, send);
-    SERVICESOCKET(s, recv, recv);
+
     SERVICESOCKET(s, sendto, sendto);
     SERVICESOCKET(s, recvfrom, recvfrom);
     SERVICESOCKET(s, sendmsg, sendmsg);
@@ -1288,17 +1313,18 @@ init (void)
     SERVICESOCKET(s, getsockopt, getsockopt);
     SERVICESOCKET(s, setsockopt, setsockopt);
 
-    //SERVICESYSCALL(s, lstat64, umnet_lstat64);
-    SERVICESYSCALL(s, fcntl, fcntl64);
+    SERVICESYSCALL(s, lstat64, lstat);
+    SERVICESYSCALL(s, fcntl, fcntl);
     SERVICESYSCALL(s, access, access);
     SERVICESYSCALL(s, chmod, chmod);
     SERVICESYSCALL(s, lchown, lchown);
     SERVICESYSCALL(s, ioctl, ioctl);
-
+    */
 
 
     htuname=ht_tab_add(CHECKSC,&nruname,sizeof(int),&s,NULL,NULL);
-    s.event_subscribe=umnet_event_subscribe;
+    //s.event_subscribe=umnet_event_subscribe;
+    printk("INITEND\n");
 }
 
 static void
