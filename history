@@ -1,0 +1,183 @@
+2  sudo bash
+3  mv .fvwm .fvwm.old
+4  uname -a
+5  mkdir sourceforge
+6  cd sourceforge/
+7  mkdri vde
+8  mkdir vde
+9  cd vde/
+10  svn co https://vde.svn.sourceforge.net/svnroot/vde/trunk/vde-2
+11  cd vde-2/
+12  ls
+13  autoreconf -if 
+14  ./configure 
+15  ./configure --enable-experimental --enable-kernel-switch
+16  make
+17  sudo make install
+18  su
+19  sudo make install
+20  cd ..
+21  echo svn co https://vde.svn.sourceforge.net/svnroot/vde/trunk/vde-2
+22  svn co https://vde.svn.sourceforge.net/svnroot/vde/trunk/ipn
+23  cd ipn/
+24  ls
+25  less INSTALL 
+26  make
+27  sudo make modules_install
+28  ls
+29  cp Module.symvers kvde_switch/
+30  cd kvde_switch/
+31  ls
+32  make
+33  sudo make modules_install
+34  cd ../..
+35  ls
+36  svn co https://vde.svn.sourceforge.net/svnroot/vde/trunk/vdetelweb
+37  cd ..
+38  mkdir view-os
+39  cd view-os
+40  cd view-ok
+41  svn co https://view-os.svn.sourceforge.net/svnroot/view-os/trunk
+42  cd trunk/lwipv6/
+43  ls
+44  autoreconf -if
+45  ./configure 
+46  make 
+47  sudo make install
+48  cd ..
+49  ls
+50  cd purelibc/
+51  ls
+52  autoreconf -if
+53  make && sudo make install
+54  make
+55  ./configure 
+56  make && sudo make install
+57  cd ..
+58  ls
+59  cd slirpvde6/
+60  ls
+61  autoreconf -if
+62  ./configure 
+63  make && make install
+64  make
+65  sudo make install
+66  cd ..
+67  ls
+68  echo svn co https://view-os.svn.sourceforge.net/svnroot/view-os/trunk
+69  svn co https://view-os.svn.sourceforge.net/svnroot/view-os/trunk
+70  svn co https://view-os.svn.sourceforge.net/svnroot/view-os/branches/rd235
+71  ls
+72  cd rd235/
+73  ls
+74  cd xmview-os/
+75  ls
+76  autoreconf -if
+77  ./configure 
+78  make
+79  ./configure 
+80  autoreconf -if
+81  ./configure 
+82  make
+83  sudo make install
+84  umview xterm
+85  umview -t xterm
+86  export LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib/umview/modules
+87  umview -t xterm
+88  cd ../../
+89  ls
+90  cd trunk/
+91  ls
+92  cd fuse-modules/
+93  ls
+94  cd ext2/
+95  ls
+96  cd ../fuse-umfuse-ext2/
+97  ls
+98  autoreconf -if
+99  ./configure 
+100  make
+101  ./configure 
+102  make
+103  sudo make install
+104  cd ..
+105  ls
+106  cd fat/
+107  ls
+108  autoreconf -fi
+109  ./configure 
+110  make
+111  sudo make install
+112  cd ..
+113  ls
+114  cd archivemount/
+115  ls
+116  autoreconf -fi
+117  ./configure 
+118  make
+119  sudo make install
+120  cd ..
+121  ls
+122  cd ../../../vde/vdetelweb/
+123  ls
+124  umview -t xterm
+125  cd ../../view-os/rd235/xmview-os/xmview/
+126  make debug
+127  ./umview ls
+128  make clean; make
+129  gdb umview
+130  kill -9 %1
+131  ./umview xterm
+132  ./umview -t xterm
+133  cd ../../../
+134  cd ../vde/vdetelweb/
+135  ls
+136  autoreconf -fi
+137  ./configure 
+138  make
+139  sudo make install
+140  history
+141  history > /tmp/history
+===root from now on===
+1  aptitude install vim fvwm
+2  vi /etc/network/interfaces 
+3  vi /etc/resolv.conf 
+4  ifdown eth0; ifup eth0
+5  ip addr
+6  ping mad
+7  ping mad.cs.unibo.it
+8  aptitude install vim fvwm
+9  aptitude install build-essential
+10  aptitude install subversion git 
+11  aptitude install automake autoconf
+12  aptitude install libtool
+13  aptitude install libssl-dev libpcap-dev
+14  aptitude install linux-headers
+15  uname -a
+16  aptitude
+17  aptitude install libmhash-dev
+18  aptitude install libcap-dev
+19  aptitude install libglib-dev
+20  aptitude install libglib2.0-dev
+21  aptitude install libfuse-dev
+22  aptitude install strace
+23  aptitude install e2fslib-dev
+24  aptitude install e2fslibs-dev
+25  apt-file search libarchiv
+26  aptitude install
+libarchive-dev
+27  cd /etc/init.d/
+28  mv /tmp/vde_switch .
+29  vi vde_switch 
+30 /etc/init.d/vde_switch s
+31 aptitude install gdb
+32  gdb -p 29350
+33 history
+>> /tmp/history 
+_______________________________________________
+Vsd
+mailing
+list
+Vsd@cs.unibo.it
+http://www.cs.unibo.it/cgi-bin/mailman/listinfo/vsd
+
