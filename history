@@ -146,7 +146,7 @@
 5  ip addr
 6  ping mad
 7  ping mad.cs.unibo.it
-8  aptitude install vim fvwm
+8  aptitude install vim fvwm python-dev
 9  aptitude install build-essential
 10  aptitude install subversion git 
 11  aptitude install automake autoconf

@@ -1,7 +1,7 @@
 /*   This is part of um-ViewOS
  *   The user-mode implementation of OSVIEW -- A Process with a View
  *
- *   
+ *
  *
  *   Copyright 2005 Renzo Davoli University of Bologna - Italy
  *
@@ -20,7 +20,7 @@
  *
  *   $Id: libummod.h 649 2009-04-23 05:44:01Z rd235 $
  *
- * 
+ *
  */
 #ifndef _LIBUMMOD_H
 #define _LIBUMMOD_H

@@ -1,7 +1,7 @@
 /*   This is part of um-ViewOS
  *   The user-mode implementation of OSVIEW -- A Process with a View
  *
- *   
+ *
  *
  *   Copyright 2005 Renzo Davoli University of Bologna - Italy
  *
@@ -166,8 +166,8 @@ struct service {
 	 */
 	c_set ctlhs;
 
-	/* 
-	 *  (int fd, void *req) 
+	/*
+	 *  (int fd, void *req)
 	 *  returns: the length of the field bit_or IOCTL_R/IOCTL_W if the parameter is input/output
 	 */
 	sysfun ioctlparms;
@@ -175,7 +175,7 @@ struct service {
 	/* proactive management of select/poll system call. The module provides this function
 	 * to activate a callback when an event occurs.
 	 * it has the followin args:
-	 * (void (* cb)(), void *arg, int fd, int events)    
+	 * (void (* cb)(), void *arg, int fd, int events)
 	 * cb: the callback function (if NULL, it means that a previous registration for callback
 	 *     must be deleted).
 	 * arg: argument passed to the callback function
@@ -194,7 +194,7 @@ struct service {
 	sysfun *virsc;
 };
 
-/* 
+/*
  * #define ESCNO_SOCKET is defined 0x4000 or 0x0
  * depending on the presence of the single socketcall system call
  * or one syscall for each socket call*/
@@ -232,7 +232,7 @@ extern int um_mod_event_subscribe(void (* cb)(), void *arg, int fd, int how);
 extern int um_mod_nrsyscalls(void);
 
 extern int uscno(int scno);
-extern void service_userctl(unsigned long type, struct service *sender, 
+extern void service_userctl(unsigned long type, struct service *sender,
 		char *recipient, ...);
 
 extern void *openmodule(const char *modname, int flag);
@@ -328,7 +328,7 @@ typedef int (* confirmfun_t)(int type, void *arg, int arglen,
 
 /* add a path to the hashtable (this creates an entry for the mounttab) */
 struct ht_elem *ht_tab_pathadd(unsigned char type, const char *source,
-		const char *path, const char *fstype, 
+		const char *path, const char *fstype,
 		unsigned long mountflags, const char *flags,
 		struct service *service, unsigned char trailingnumbers,
 		confirmfun_t confirmfun, void *private_data);
@@ -339,7 +339,7 @@ struct ht_elem *ht_tab_add(unsigned char type,void *obj,int objlen,
 
 void ht_tab_invalidate(struct ht_elem *hte);
 
-int ht_tab_del(struct ht_elem *mp); 
+int ht_tab_del(struct ht_elem *mp);
 
 void ht_tab_getmtab(FILE *f);
 
