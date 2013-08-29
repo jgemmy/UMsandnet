@@ -889,22 +889,19 @@ static void defnet_update (char *defnetstr,
 }
 */
 
-static int stampa(int type, void *arg, int arglen, struct ht_elem *ht)
-{
+static int stampa(int type, void *arg, int arglen, struct ht_elem *ht) {
     printk("PROVA type = %d, arg = %lu, arglen = %d, ht = %lu\n", type, arg, arglen, ht);
     return 1;
 }
 
-typedef struct unique
-{
+typedef struct unique {
     struct sockaddr addr;
     struct unique* next;
 } lista_t;
 
 lista_t whitelist, blacklist;
 
-static inline lista_t* __crea(struct sockaddr* addr)
-{
+static inline lista_t* __crea(struct sockaddr* addr) {
     lista_t* new = malloc(sizeof(lista_t));
     assert(new);
     puliscipuntatore(new);
@@ -912,11 +909,9 @@ static inline lista_t* __crea(struct sockaddr* addr)
     return new;
 }
 
-static void addaddr(struct sockaddr* saddr, lista_t* sentinella)
-{
+static void addaddr(struct sockaddr* saddr, lista_t* sentinella) {
     uint16_t family = saddr->sa_family;
-    if (family == AF_INET || family == AF_INET6)
-    {
+    if (family == AF_INET || family == AF_INET6) {
         lista_t* new = __crea(saddr);
         new->next = sentinella->next;
         sentinella->next = new;
@@ -924,13 +919,10 @@ static void addaddr(struct sockaddr* saddr, lista_t* sentinella)
     }
 }
 
-static int sockaddrcmp(struct sockaddr* s1, struct sockaddr* s2)
-{
+static int sockaddrcmp(struct sockaddr* s1, struct sockaddr* s2) {
     uint16_t family = s1->sa_family;
-    if (s1->sa_family == s2->sa_family)
-    {
-        switch(family)
-        {
+    if (s1->sa_family == s2->sa_family) {
+        switch(family) {
         case AF_INET:
             return memcmp(&((struct sockaddr_in*)s1)->sin_addr, &((struct sockaddr_in*)s2)->sin_addr,sizeof(struct in_addr));
         case AF_INET6:
@@ -941,50 +933,40 @@ static int sockaddrcmp(struct sockaddr* s1, struct sockaddr* s2)
     return 1;
 }
 
-static lista_t* _lookforaddr(struct sockaddr* target, lista_t* sentinella)
-{
+static lista_t* _lookforaddr(struct sockaddr* target, lista_t* sentinella) {
     lista_t* iter = sentinella;
     printk("_LOOKFORADDR\n");
-    while (iter->next != NULL)
-    {
+    while (iter->next != NULL) {
         iter = iter->next;
-        if (iter->addr.sa_family == target->sa_family)
-        {
-            switch(iter->addr.sa_family)
-            {
+        if (iter->addr.sa_family == target->sa_family) {
+            switch(iter->addr.sa_family) {
             case AF_INET:
             case AF_INET6:
                 if (!sockaddrcmp(&iter->addr, target)) return iter;
             }
-        }
-        else continue;
+        } else continue;
     }
     return NULL;
 }
 
-static int lookforaddr(struct sockaddr* target)
-{
+static int lookforaddr(struct sockaddr* target) {
     lista_t* white,* black;
     //printk("LOOKFORADDR!\n");
     white = _lookforaddr(target,&whitelist);
     black = _lookforaddr(target,&blacklist);
-    if (unlikely(black && white))
-    {
+    if (unlikely(black && white)) {
         printf("lookforaddr: indirizzo sia nella whitelist sia nella blacklist.\n");
         fflush(stdout);
         exit(-1);
-    }
-    else if (black) return BLACK;
+    } else if (black) return BLACK;
     else if (white) return WHITE;
     else return 0;
 }
-static int myuname(struct utsname *buf)
-{
+static int myuname(struct utsname *buf) {
     /*errno=EINVAL;
       return -1;*/
     printk("MYUNAME\n");
-    if (uname(buf) >= 0)
-    {
+    if (uname(buf) >= 0) {
         strcpy(buf->sysname,"sandbox_module");
         strcpy(buf->nodename,"sandbox_module");
         strcpy(buf->release,"sandbox_module");
@@ -992,17 +974,14 @@ static int myuname(struct utsname *buf)
         strcpy(buf->machine,"sandbox_module");
         //strcpy(buf->domainname,"mymodule");
         return 0;
-    }
-    else return -1;
+    } else return -1;
 
 }
 
-static int mysocket(int domain, int type, int protocol)
-{
+static int mysocket(int domain, int type, int protocol) {
     int ret = socket(domain, type, protocol);
     //printf("socket #%d -> ",ret);
-    switch(domain)
-    {
+    switch(domain) {
     case AF_LOCAL:
         printf("socket locale. (%d)\n",AF_LOCAL);
         connections[ret] = 'L';
@@ -1024,12 +1003,10 @@ static int mysocket(int domain, int type, int protocol)
     return ret;
 }
 
-static int mymsocket(char* path, int domain, int type, int protocol)
-{
+static int mymsocket(char* path, int domain, int type, int protocol) {
     int ret;
     ret = msocket(path, domain, type, protocol);
-    switch(domain)
-    {
+    switch(domain) {
     case AF_LOCAL:
         printk("msocket locale con parametri path = %s, domain %d, type = %d, proto = %d\n",
                path == NULL? "NULL" : path, domain, type, protocol);
@@ -1056,8 +1033,7 @@ static int mymsocket(char* path, int domain, int type, int protocol)
     return ret;
 }
 
-static int myclose(int fd)
-{
+static int myclose(int fd) {
     int ret = close(fd);
     printf("myclose: fd=%d, ret=%d.\n",fd,ret);
     connections[fd] = (char)0;
@@ -1065,8 +1041,7 @@ static int myclose(int fd)
 }
 
 /*TODO: ricordare scelta accept/reject*/
-static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
-{
+static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen) {
     printk("%d MYCONNECT (sockfd =  %d, addr = %lu, addrlen = %d\n", um_mod_getsyscallno(),sockfd, addr, (int) addrlen);
     //return connect(sockfd,addr,addrlen);
     char ip[INET6_ADDRSTRLEN],response = 'n';
@@ -1075,8 +1050,7 @@ static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
     int temp = -2;
     memset(ip,0,INET6_ADDRSTRLEN*sizeof(char));
     /*new*/
-    switch(family)
-    {
+    switch(family) {
     case AF_INET:
         inet_ntop(AF_INET, &(((struct sockaddr_in *)addr)->sin_addr),ip,INET_ADDRSTRLEN);
         break;
@@ -1084,8 +1058,7 @@ static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
         inet_ntop(AF_INET6, &(((struct sockaddr_in6 *)addr)->sin6_addr),ip,INET6_ADDRSTRLEN);
         break;
     }
-    switch (lookforaddr(saddr))
-    {
+    switch (lookforaddr(saddr)) {
     case BLACK:
         goto failure;
     case WHITE:
@@ -1095,16 +1068,14 @@ static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
         break;
     }
     /*endnew*/
-    if (family == AF_INET || family == AF_INET6)
-    {
+    if (family == AF_INET || family == AF_INET6) {
         static char buf[BUFSTDIN];
         int i = 0;
         memset(buf,0,BUFSTDIN);
         printf("rilevato un tentativo di connect verso l'ip %s: vuoi permetterla? (y/n/Y/N) ",ip);
         fgets(buf,BUFSTDIN,stdin);
         sscanf(buf,"%c",&response);
-        switch(response)
-        {
+        switch(response) {
         case 'Y':
             addaddr(addr,&whitelist);
         case 'y':
@@ -1127,14 +1098,12 @@ success:
     return temp;
 }
 
-static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
-{
+static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     char ip[INET6_ADDRSTRLEN],response,buf[BUFSTDIN];
     uint16_t port, family = addr->sa_family;
     printf("bind su fd #%d , family %d \n",sockfd,family);
     memset(ip,0,INET6_ADDRSTRLEN*sizeof(char));
-    switch(family)
-    {
+    switch(family) {
     case AF_INET:
         inet_ntop(AF_INET, &(((struct sockaddr_in *)addr)->sin_addr),ip,INET_ADDRSTRLEN);
         port = ntohs(((struct sockaddr_in *)addr)->sin_port);
@@ -1144,8 +1113,7 @@ static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
         port = ntohs(((struct sockaddr_in6 *)addr)->sin6_port);
         break;
     }
-    if (family == AF_INET || family == AF_INET6)
-    {
+    if (family == AF_INET || family == AF_INET6) {
         printf("rilevato un tentativo di bind sulla porta %d: vuoi permetterla? (y/n)", port);
         pulisciarray(buf);
         fgets(buf,BUFSTDIN,stdin);
@@ -1153,34 +1121,29 @@ static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
         if (response == 'y') return bind(sockfd, addr, addrlen);
         errno=EACCES;
         return -1;
-    }
-    else return bind(sockfd,addr,addrlen);
+    } else return bind(sockfd,addr,addrlen);
 }
 
-static int myaccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
-{
+static int myaccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
     errno=EACCES;
     return -1;
 }
 
-ssize_t myread(int fd, void *buf, size_t count)
-{
+ssize_t myread(int fd, void *buf, size_t count) {
     printk("MYREAD\n");
     fflush(stdout);
     fflush(stderr);
     return read(fd,buf,count);
 }
 
-ssize_t myrecv(int sockfd, void *buf, size_t len, int flags)
-{
+ssize_t myrecv(int sockfd, void *buf, size_t len, int flags) {
     printk("MYRECV\n");
     fflush(stdout);
     fflush(stderr);
     return recv(sockfd,buf,len,flags);
 }
 
-ssize_t mysend(int sockfd, const void *buf, size_t len, int flags)
-{
+ssize_t mysend(int sockfd, const void *buf, size_t len, int flags) {
     printk("MYSEND\n");
     fflush(stdout);
     fflush(stderr);
@@ -1188,18 +1151,15 @@ ssize_t mysend(int sockfd, const void *buf, size_t len, int flags)
 }
 
 
-ssize_t mywrite(int fd, const void *buf, size_t count)
-{
+ssize_t mywrite(int fd, const void *buf, size_t count) {
     printk("MYWRITE\n");
     fflush(stdout);
     fflush(stderr);
     return write(fd,buf,count);
 }
 
-static long myioctlparms(int fd, int req)
-{
-    switch (req)
-    {
+static long myioctlparms(int fd, int req) {
+    switch (req) {
     case FIONREAD:
         return sizeof(int) | IOCTL_W;
     case FIONBIO:
@@ -1236,29 +1196,27 @@ static long myioctlparms(int fd, int req)
     }
 }
 
-static int myioctl(int d, int request, void *arg)
-{
+static int myioctl(int d, int request, void *arg) {
     printk("MYIOCTL\n");
-     if (request == SIOCGIFCONF) {
-         int rv;
-         void *save;
-         struct ifconf *ifc=(struct ifconf *)arg;
-         save=ifc->ifc_buf;
-         ioctl(d,request,arg);
-         ifc->ifc_buf=malloc(ifc->ifc_len);
-         um_mod_umoven((long) save,ifc->ifc_len,ifc->ifc_buf);
-         rv=ioctl(d,request,arg);
-         if (rv>=0)
-             um_mod_ustoren((long) save,ifc->ifc_len,ifc->ifc_buf);
-         free(ifc->ifc_buf);
-         ifc->ifc_buf=save;
-         return rv;
-     }
+    if (request == SIOCGIFCONF) {
+        int rv;
+        void *save;
+        struct ifconf *ifc=(struct ifconf *)arg;
+        save=ifc->ifc_buf;
+        ioctl(d,request,arg);
+        ifc->ifc_buf=malloc(ifc->ifc_len);
+        um_mod_umoven((long) save,ifc->ifc_len,ifc->ifc_buf);
+        rv=ioctl(d,request,arg);
+        if (rv>=0)
+            um_mod_ustoren((long) save,ifc->ifc_len,ifc->ifc_buf);
+        free(ifc->ifc_buf);
+        ifc->ifc_buf=save;
+        return rv;
+    }
     return ioctl(d,request,arg);
 }
 
-void viewos_fini(void *arg)
-{
+void viewos_fini(void *arg) {
     printk("viewos_fini\n");
     /*
        struct ht_elem *socket_ht=arg;
@@ -1271,8 +1229,7 @@ void viewos_fini(void *arg)
        */
 }
 
-void *viewos_init(char *args)
-{
+void *viewos_init(char *args) {
     printk("viewos_fini\n");
     /*
        char *defnetstr = NULL;
@@ -1364,8 +1321,7 @@ void *viewos_init(char *args)
 
 static void
 __attribute__ ((constructor))
-init (void)
-{
+init (void) {
     int nruname=__NR_uname;
     int nrfork = __NR_fork;
     int nrvfork = __NR_vfork;
@@ -1476,8 +1432,7 @@ init (void)
 
 static void
 __attribute__ ((destructor))
-fini (void)
-{
+fini (void) {
     ht_tab_invalidate(htsocket);
     ht_tab_del(htsocket);
     ht_tab_invalidate(htuname);
