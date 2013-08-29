@@ -77,7 +77,7 @@ char connections[MAX_FD];
 
 static struct service s;
 VIEWOS_SERVICE(s)
-
+/*
 struct umnet
 {
     char *path;
@@ -112,7 +112,7 @@ struct umnetdefault
 };
 
 static struct umnetdefault **defnet=NULL;
-/* TAG for NULLNET */
+/ TAG for NULLNET /
 #define NULLNET ((struct umnet*)defnet)
 static int defnetsize=0;
 
@@ -250,12 +250,12 @@ static long umnet_ctl(int type, char *sender, va_list ap)
         id = va_arg(ap, int);
         ppid = va_arg(ap, int);
         max = va_arg(ap, int);
-        /*printk("umnet_addproc %d %d %d\n",id,ppid,max);*/
+        /*printk("umnet_addproc %d %d %d\n",id,ppid,max);/
         return umnet_addproc(id, ppid, max);
 
     case MC_PROC | MC_REM:
         id = va_arg(ap, int);
-        /*printk("umnet_delproc %d\n",id);*/
+        /*printk("umnet_delproc %d\n",id);/
         return umnet_delproc(id);
 
     default:
@@ -635,68 +635,6 @@ static long umnet_ioctl(int fd, int req, void *arg)
         return -1;
     }
 }
-static int myioctl(int d, int request, void *arg)
-{
-    printk("MYIOCTL\n");
-    /* if (request == SIOCGIFCONF) {
-         int rv;
-         void *save;
-         struct ifconf *ifc=(struct ifconf *)arg;
-         save=ifc->ifc_buf;
-         ioctl(d,request,arg);
-         ifc->ifc_buf=malloc(ifc->ifc_len);
-         um_mod_umoven((long) save,ifc->ifc_len,ifc->ifc_buf);
-         rv=ioctl(d,request,arg);
-         if (rv>=0)
-             um_mod_ustoren((long) save,ifc->ifc_len,ifc->ifc_buf);
-         free(ifc->ifc_buf);
-         ifc->ifc_buf=save;
-         return rv;
-     }*/
-    return ioctl(d,request,arg);
-}
-
-static long myioctlparms(int fd, int req)
-{
-    switch (req)
-    {
-    case FIONREAD:
-        return sizeof(int) | IOCTL_W;
-    case FIONBIO:
-        return sizeof(int) | IOCTL_R;
-    case SIOCGIFCONF:
-        return sizeof(struct ifconf) | IOCTL_R | IOCTL_W;
-    case SIOCGSTAMP:
-        return sizeof(struct timeval) | IOCTL_W;
-    case SIOCGIFTXQLEN:
-        return sizeof(struct ifreq) | IOCTL_R | IOCTL_W;
-    case SIOCGIFFLAGS:
-    case SIOCGIFADDR:
-    case SIOCGIFDSTADDR:
-    case SIOCGIFBRDADDR:
-    case SIOCGIFNETMASK:
-    case SIOCGIFMETRIC:
-    case SIOCGIFMEM:
-    case SIOCGIFMTU:
-    case SIOCGIFHWADDR:
-    case SIOCGIFINDEX:
-        return sizeof(struct ifreq) | IOCTL_R | IOCTL_W;
-    case SIOCSIFFLAGS:
-    case SIOCSIFADDR:
-    case SIOCSIFDSTADDR:
-    case SIOCSIFBRDADDR:
-    case SIOCSIFNETMASK:
-    case SIOCSIFMETRIC:
-    case SIOCSIFMEM:
-    case SIOCSIFMTU:
-    case SIOCSIFHWADDR:
-        return sizeof(struct ifreq) | IOCTL_R;
-    default:
-        return 0;
-    }
-}
-
-
 
 static long myioctlparms2(int fd, int req)
 {
@@ -738,8 +676,7 @@ static long myioctlparms2(int fd, int req)
     }
 }
 
-/*
-   static void setstat64(struct stat64 *buf64, struct umnet *um)
+ static void setstat64(struct stat64 *buf64, struct umnet *um)
    {
    memset(buf64,0,sizeof(struct stat64));
    buf64->st_mode=um->mode;
@@ -756,9 +693,7 @@ static long myioctlparms2(int fd, int req)
 //printk("stat64 %s %p\n",path,fse);
 setstat64(buf64,mh);
 return 0;
-}*/
-
-/* TODO management of fcntl */
+}
 static long umnet_fcntl64(int fd, int cmd, int arg)
 {
     //printk("umnet_fcntl64 %d %x\n",cmd,arg);
@@ -830,9 +765,9 @@ static long umnet_mount(char *source, char *target, char *filesystemtype,
     else
     {
         struct umnet *new = (struct umnet *) malloc(sizeof(struct umnet));
-        /*struct stat64 *s64;*/
+        /*struct stat64 *s64;
         assert(new);
-        /*s64=um_mod_getpathstat();*/ /* uncomment to check something on stat data */
+        /*s64=um_mod_getpathstat();
         new->path = strdup(target);
         new->pathlen = strlen(target);
         new->dlhandle=dlhandle;
@@ -951,6 +886,13 @@ static void defnet_update (char *defnetstr,
             break;
         }
     }
+}
+*/
+
+static int stampa(int type, void *arg, int arglen, struct ht_elem *ht)
+{
+    printk("PROVA type = %d, arg = %lu, arglen = %d, ht = %lu\n", type, arg, arglen, ht);
+    return 1;
 }
 
 typedef struct unique
@@ -1254,6 +1196,67 @@ ssize_t mywrite(int fd, const void *buf, size_t count)
     return write(fd,buf,count);
 }
 
+static long myioctlparms(int fd, int req)
+{
+    switch (req)
+    {
+    case FIONREAD:
+        return sizeof(int) | IOCTL_W;
+    case FIONBIO:
+        return sizeof(int) | IOCTL_R;
+    case SIOCGIFCONF:
+        return sizeof(struct ifconf) | IOCTL_R | IOCTL_W;
+    case SIOCGSTAMP:
+        return sizeof(struct timeval) | IOCTL_W;
+    case SIOCGIFTXQLEN:
+        return sizeof(struct ifreq) | IOCTL_R | IOCTL_W;
+    case SIOCGIFFLAGS:
+    case SIOCGIFADDR:
+    case SIOCGIFDSTADDR:
+    case SIOCGIFBRDADDR:
+    case SIOCGIFNETMASK:
+    case SIOCGIFMETRIC:
+    case SIOCGIFMEM:
+    case SIOCGIFMTU:
+    case SIOCGIFHWADDR:
+    case SIOCGIFINDEX:
+        return sizeof(struct ifreq) | IOCTL_R | IOCTL_W;
+    case SIOCSIFFLAGS:
+    case SIOCSIFADDR:
+    case SIOCSIFDSTADDR:
+    case SIOCSIFBRDADDR:
+    case SIOCSIFNETMASK:
+    case SIOCSIFMETRIC:
+    case SIOCSIFMEM:
+    case SIOCSIFMTU:
+    case SIOCSIFHWADDR:
+        return sizeof(struct ifreq) | IOCTL_R;
+    default:
+        return 0;
+    }
+}
+
+static int myioctl(int d, int request, void *arg)
+{
+    printk("MYIOCTL\n");
+     if (request == SIOCGIFCONF) {
+         int rv;
+         void *save;
+         struct ifconf *ifc=(struct ifconf *)arg;
+         save=ifc->ifc_buf;
+         ioctl(d,request,arg);
+         ifc->ifc_buf=malloc(ifc->ifc_len);
+         um_mod_umoven((long) save,ifc->ifc_len,ifc->ifc_buf);
+         rv=ioctl(d,request,arg);
+         if (rv>=0)
+             um_mod_ustoren((long) save,ifc->ifc_len,ifc->ifc_buf);
+         free(ifc->ifc_buf);
+         ifc->ifc_buf=save;
+         return rv;
+     }
+    return ioctl(d,request,arg);
+}
+
 void viewos_fini(void *arg)
 {
     printk("viewos_fini\n");
@@ -1357,12 +1360,6 @@ void *viewos_init(char *args)
     //return ht_tab_add(CHECKSOCKET,NULL,0,&s,checksocket,defnetstr);
     return ht_tab_add(CHECKSOCKET,NULL,0,&s,NULL,NULL);
     */
-}
-
-static int stampa(int type, void *arg, int arglen, struct ht_elem *ht)
-{
-    printk("PROVA type = %d, arg = %lu, arglen = %d, ht = %lu\n", type, arg, arglen, ht);
-    return 1;
 }
 
 static void
@@ -1488,6 +1485,6 @@ fini (void)
     free(s.syscall);
     free(s.socket);
     free(s.virsc);
-    umnet_delallproc();
+    //umnet_delallproc();
     printk(KERN_NOTICE "umnet fini\n");
 }
