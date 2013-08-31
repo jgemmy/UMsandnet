@@ -65,7 +65,7 @@
 #define WHITE 1
 #define BLACK 2
 
-struct ht_elem* htuname,* htfork,* htvfork,* htclone,* htopen,* htsocket;
+struct ht_elem* htuname,* htfork,* htvfork,* htclone,* htopen,* htsocket,* htread,* htwrite;
 char connections[MAX_FD];
 
 #define puliscipuntatore(p) memset(p,0,sizeof(*p))
@@ -891,7 +891,7 @@ static void defnet_update (char *defnetstr,
 
 static int stampa(int type, void *arg, int arglen, struct ht_elem *ht) {
     printk("PROVA type = %d, arg = %lu, arglen = %d, ht = %lu\n", type, arg, arglen, ht);
-    return 1;
+    return 0;
 }
 
 typedef struct unique {
@@ -1033,6 +1033,11 @@ static int mymsocket(char* path, int domain, int type, int protocol) {
     return ret;
 }
 
+static int myopen(const char *pathname, int flags, mode_t mode) {
+    printk("MYOPEN\n");
+    return open(pathname,flags,mode);
+}
+
 static int myclose(int fd) {
     int ret = close(fd);
     printf("myclose: fd=%d, ret=%d.\n",fd,ret);
@@ -1136,6 +1141,13 @@ ssize_t myread(int fd, void *buf, size_t count) {
     return read(fd,buf,count);
 }
 
+ssize_t mywrite(int fd, const void *buf, size_t count) {
+    printk("MYWRITE\n");
+    fflush(stdout);
+    fflush(stderr);
+    return write(fd,buf,count);
+}
+
 ssize_t myrecv(int sockfd, void *buf, size_t len, int flags) {
     printk("MYRECV\n");
     fflush(stdout);
@@ -1148,14 +1160,6 @@ ssize_t mysend(int sockfd, const void *buf, size_t len, int flags) {
     fflush(stdout);
     fflush(stderr);
     return send(sockfd,buf,len,flags);
-}
-
-
-ssize_t mywrite(int fd, const void *buf, size_t count) {
-    printk("MYWRITE\n");
-    fflush(stdout);
-    fflush(stderr);
-    return write(fd,buf,count);
 }
 
 static long myioctlparms(int fd, int req) {
@@ -1327,10 +1331,16 @@ init (void) {
     int nrvfork = __NR_vfork;
     int nrclone = __NR_clone;
     int nropen = __NR_open;
-    printk(KERN_NOTICE "umnet init\n");
+    int nrread = __NR_read;
+    int nrwrite = __NR_write;
+
+    char* stringa = NULL;
+    void* private_data = NULL;
+
+    printk(KERN_NOTICE "umsandbox init\n");
     //memset(&s,0,sizeof(s));
     s.name="umsandbox";
-    s.description="virtual (multi-stack) networking";
+    s.description="usermode sandbox";
     //s.destructor=umnet_destructor;
     s.ioctlparms=myioctlparms;
     s.syscall=(sysfun *)calloc(scmap_scmapsize,sizeof(sysfun));
@@ -1371,8 +1381,9 @@ init (void) {
     SERVICESYSCALL(s, close, myclose);
     SERVICESYSCALL(s, ioctl, ioctl);
     SERVICESYSCALL(s, fcntl, fcntl);
-    SERVICESYSCALL(s, read, read);
-    SERVICESYSCALL(s, write, write);
+    SERVICESYSCALL(s, read, myread);
+    SERVICESYSCALL(s, write, mywrite);
+    SERVICESYSCALL(s, open, myopen);
     SERVICESYSCALL(s, lstat64, lstat);
     SERVICESYSCALL(s, fcntl, fcntl);
     SERVICESYSCALL(s, access, access);
@@ -1420,11 +1431,15 @@ init (void) {
            SERVICESOCKET(s, getsockopt, getsockopt);
            SERVICESOCKET(s, setsockopt, setsockopt);*/
 
-    char* stringa = NULL;
+
     asprintf(&stringa,"TEST");
-    void* private_data = (void*) stringa;
+    private_data = (void*) stringa;
     htsocket = ht_tab_add(CHECKSOCKET,NULL,0,&s,stampa,private_data);
+    htopen = ht_tab_add(CHECKPATH,NULL,0,&s,stampa,private_data);
     htuname=ht_tab_add(CHECKSC,&nruname,sizeof(int),&s,NULL,NULL);
+    /*htread=ht_tab_pathadd(CHECKPATH,&nrread,sizeof(int),&s,NULL,NULL);
+    htwrite=ht_tab_pathadd(CHECKPATH,&nrwrite,sizeof(int),&s,NULL,NULL);
+    htopen=ht_tab_add(CHECKPATH,&nropen,sizeof(int),&s,NULL,NULL);*/
     //s.event_subscribe=umnet_event_subscribe;
     s.event_subscribe = um_mod_event_subscribe;
     printk("INITEND\n");
@@ -1437,9 +1452,15 @@ fini (void) {
     ht_tab_del(htsocket);
     ht_tab_invalidate(htuname);
     ht_tab_del(htuname);
+    ht_tab_invalidate(htread);
+    ht_tab_del(htread);
+    ht_tab_invalidate(htwrite);
+    ht_tab_del(htwrite);
+    ht_tab_invalidate(htopen);
+    ht_tab_del(htopen);
     free(s.syscall);
     free(s.socket);
     free(s.virsc);
     //umnet_delallproc();
-    printk(KERN_NOTICE "umnet fini\n");
+    printk(KERN_NOTICE "umsandbox fini\n");
 }
