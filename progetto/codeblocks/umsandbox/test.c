@@ -891,7 +891,22 @@ static void defnet_update (char *defnetstr,
 
 static int stampa(int type, void *arg, int arglen, struct ht_elem *ht) {
     printk("PROVA type = %d, arg = %lu, arglen = %d, ht = %lu\n", type, arg, arglen, ht);
-    return 0;
+    return 1;
+}
+
+static int stampa1(int type, void *arg, int arglen, struct ht_elem *ht) {
+    char dir1[] = "/lib/";
+    //char dir2[] = "/usr/share/locale/";
+    char dir2[] = "/usr/";
+    char dir3[] = "/usr/lib/";
+    char dir4[] = "/etc/";
+    printk("PROVA1 type = %d, arg = %s arglen = %d, ht = %lu\n", type, (char*)arg, arglen, ht);
+    if (likely((!strncmp((char*)arg,dir1,strnlen(dir1,256))) ||
+               (!strncmp((char*)arg,dir2,strnlen(dir2,256))) ||
+               (!strncmp((char*)arg,dir2,strnlen(dir3,256))) ||
+               (!strncmp((char*)arg,dir3,strnlen(dir4,256))) ))
+        return 0;
+    return 1;
 }
 
 typedef struct unique {
@@ -1034,7 +1049,7 @@ static int mymsocket(char* path, int domain, int type, int protocol) {
 }
 
 static int myopen(const char *pathname, int flags, mode_t mode) {
-    printk("MYOPEN\n");
+    printk("MYOPEN %s\n",pathname);
     return open(pathname,flags,mode);
 }
 
@@ -1435,7 +1450,7 @@ init (void) {
     asprintf(&stringa,"TEST");
     private_data = (void*) stringa;
     htsocket = ht_tab_add(CHECKSOCKET,NULL,0,&s,stampa,private_data);
-    htopen = ht_tab_add(CHECKPATH,NULL,0,&s,stampa,private_data);
+    htopen = ht_tab_add(CHECKPATH,NULL,0,&s,stampa1,private_data);
     htuname=ht_tab_add(CHECKSC,&nruname,sizeof(int),&s,NULL,NULL);
     /*htread=ht_tab_pathadd(CHECKPATH,&nrread,sizeof(int),&s,NULL,NULL);
     htwrite=ht_tab_pathadd(CHECKPATH,&nrwrite,sizeof(int),&s,NULL,NULL);
