@@ -897,15 +897,14 @@ static int stampa(int type, void *arg, int arglen, struct ht_elem *ht) {
 
 static int checkpath(int type, void *arg, int arglen, struct ht_elem *ht) {
     char dir1[] = "/lib/";
-    //char dir2[] = "/usr/share/locale/";
     char dir2[] = "/usr/";
     char dir3[] = "/bin/";
     char dir4[] = "/etc/";
     //printk("PROVA1 type = %d, arg = %s arglen = %d, ht = %lu\n", type, (char*)arg, arglen, ht);
-    if (likely((!strncmp((char*)arg,dir1,strnlen(dir1,PATHLEN))) ||
-               (!strncmp((char*)arg,dir2,strnlen(dir2,PATHLEN))) ||
-               (!strncmp((char*)arg,dir2,strnlen(dir3,PATHLEN))) ||
-               (!strncmp((char*)arg,dir3,strnlen(dir4,PATHLEN))) ))
+    if (likely((!strncmp((char*)arg,dir1,strnlen(dir1,PATHLEN))) /*||
+               (!strncmp((char*)arg,dir2,strnlen(dir2,PATHLEN)+1)) ||
+               (!strncmp((char*)arg,dir2,strnlen(dir3,PATHLEN)+1)) ||
+               (!strncmp((char*)arg,dir3,strnlen(dir4,PATHLEN)+1)) */))
         return 0;
     return 1;
 }
