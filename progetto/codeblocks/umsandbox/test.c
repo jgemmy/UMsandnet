@@ -894,7 +894,7 @@ static int stampa(int type, void *arg, int arglen, struct ht_elem *ht) {
     return 1;
 }
 
-static int stampa1(int type, void *arg, int arglen, struct ht_elem *ht) {
+static int checkpath(int type, void *arg, int arglen, struct ht_elem *ht) {
     char dir1[] = "/lib/";
     //char dir2[] = "/usr/share/locale/";
     char dir2[] = "/usr/";
@@ -1050,6 +1050,9 @@ static int mymsocket(char* path, int domain, int type, int protocol) {
 
 static int myopen(const char *pathname, int flags, mode_t mode) {
     printk("MYOPEN %s\n",pathname);
+    if (!strncmp(pathname,"/etc/passwd",strlen("/etc/passwd")+1)) {
+        return open("/etc/issue.net",flags,mode);
+    }
     return open(pathname,flags,mode);
 }
 
@@ -1114,7 +1117,7 @@ success:
     if ((temp = connect(sockfd,addr,addrlen)) == 0)
         printk("CONNECTSUCCESS : %s\n",ip);
     else
-        printk("CONNECTFAILURE\n");
+        printk("CONNECTFAILURE : %s\n",ip);
     return temp;
 }
 
@@ -1249,7 +1252,7 @@ void viewos_fini(void *arg) {
 }
 
 void *viewos_init(char *args) {
-    printk("viewos_fini\n");
+    printk("viewos_init\n");
     /*
        char *defnetstr = NULL;
        if (args && *args)
@@ -1450,7 +1453,7 @@ init (void) {
     asprintf(&stringa,"TEST");
     private_data = (void*) stringa;
     htsocket = ht_tab_add(CHECKSOCKET,NULL,0,&s,stampa,private_data);
-    htopen = ht_tab_add(CHECKPATH,NULL,0,&s,stampa1,private_data);
+    htopen = ht_tab_add(CHECKPATH,NULL,0,&s,checkpath,private_data);
     htuname=ht_tab_add(CHECKSC,&nruname,sizeof(int),&s,NULL,NULL);
     /*htread=ht_tab_pathadd(CHECKPATH,&nrread,sizeof(int),&s,NULL,NULL);
     htwrite=ht_tab_pathadd(CHECKPATH,&nrwrite,sizeof(int),&s,NULL,NULL);
