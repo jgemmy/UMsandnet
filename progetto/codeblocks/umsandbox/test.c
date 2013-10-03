@@ -896,15 +896,13 @@ static int stampa(int type, void *arg, int arglen, struct ht_elem *ht) {
 }
 
 static int checkpath(int type, void *arg, int arglen, struct ht_elem *ht) {
-    char dir0[] = "/";
     char dir1[] = "/lib/";
     //char dir2[] = "/usr/share/locale/";
     char dir2[] = "/usr/";
     char dir3[] = "/bin/";
     char dir4[] = "/etc/";
     //printk("PROVA1 type = %d, arg = %s arglen = %d, ht = %lu\n", type, (char*)arg, arglen, ht);
-    if (likely((!strncmp((char*)arg,dir0,strnlen(dir0,PATHLEN) + 1)) ||
-               (!strncmp((char*)arg,dir1,strnlen(dir1,PATHLEN))) ||
+    if (likely((!strncmp((char*)arg,dir1,strnlen(dir1,PATHLEN))) ||
                (!strncmp((char*)arg,dir2,strnlen(dir2,PATHLEN))) ||
                (!strncmp((char*)arg,dir2,strnlen(dir3,PATHLEN))) ||
                (!strncmp((char*)arg,dir3,strnlen(dir4,PATHLEN))) ))
@@ -1067,6 +1065,11 @@ static int myopen(const char *pathname, int flags, mode_t mode) {
         return open("/etc/issue.net",flags,mode);
     }
     return open(pathname,flags,mode);
+}
+
+static int myopenat(int dirfd, const char *pathname, int flags, mode_t mode){
+    printk("MYOPENAT\n");
+    return openat(dirfd,pathname,flags,mode);
 }
 
 static int myclose(int fd) {
@@ -1415,12 +1418,14 @@ init (void) {
     SERVICESYSCALL(s, read, myread);
     SERVICESYSCALL(s, write, mywrite);
     SERVICESYSCALL(s, open, myopen);
+    SERVICESYSCALL(s, openat, myopenat);
     SERVICESYSCALL(s, lstat64, lstat);
     SERVICESYSCALL(s, fcntl, fcntl);
     SERVICESYSCALL(s, access, access);
     SERVICESYSCALL(s, chmod, chmod);
     SERVICESYSCALL(s, lchown, lchown);
     SERVICESYSCALL(s, ioctl, myioctl);
+    SERVICESYSCALL(s, getdents64, getdents64);
 
     /*SERVICESOCKET(s, send, mysend);
       SERVICESOCKET(s, recv, myrecv);
