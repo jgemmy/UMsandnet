@@ -61,6 +61,7 @@
 #endif
 
 #define BUFSTDIN 16
+#define PATHLEN 256
 #define MAX_FD 128
 #define WHITE 1
 #define BLACK 2
@@ -895,16 +896,18 @@ static int stampa(int type, void *arg, int arglen, struct ht_elem *ht) {
 }
 
 static int checkpath(int type, void *arg, int arglen, struct ht_elem *ht) {
+    char dir0[] = "/";
     char dir1[] = "/lib/";
     //char dir2[] = "/usr/share/locale/";
     char dir2[] = "/usr/";
-    char dir3[] = "/usr/lib/";
+    char dir3[] = "/bin/";
     char dir4[] = "/etc/";
-    printk("PROVA1 type = %d, arg = %s arglen = %d, ht = %lu\n", type, (char*)arg, arglen, ht);
-    if (likely((!strncmp((char*)arg,dir1,strnlen(dir1,256))) ||
-               (!strncmp((char*)arg,dir2,strnlen(dir2,256))) ||
-               (!strncmp((char*)arg,dir2,strnlen(dir3,256))) ||
-               (!strncmp((char*)arg,dir3,strnlen(dir4,256))) ))
+    //printk("PROVA1 type = %d, arg = %s arglen = %d, ht = %lu\n", type, (char*)arg, arglen, ht);
+    if (likely((!strncmp((char*)arg,dir0,strnlen(dir0,PATHLEN) + 1)) ||
+               (!strncmp((char*)arg,dir1,strnlen(dir1,PATHLEN))) ||
+               (!strncmp((char*)arg,dir2,strnlen(dir2,PATHLEN))) ||
+               (!strncmp((char*)arg,dir2,strnlen(dir3,PATHLEN))) ||
+               (!strncmp((char*)arg,dir3,strnlen(dir4,PATHLEN))) ))
         return 0;
     return 1;
 }
@@ -1049,7 +1052,17 @@ static int mymsocket(char* path, int domain, int type, int protocol) {
 }
 
 static int myopen(const char *pathname, int flags, mode_t mode) {
-    printk("MYOPEN %s\n",pathname);
+    int how = 0;
+    if (flags & O_WRONLY) {
+        printk("MYOPEN %s with O_WRONLY flag\n",pathname);
+        how = O_WRONLY;
+    } else if (flags & O_RDWR) {
+        printk("MYOPEN %s with O_RDWR\n",pathname);
+        how = O_RDWR;
+    } else {
+        printk("MYOPEN %s with O_RDONLY flag\n",pathname);
+        how = O_RDONLY;
+    }
     if (!strncmp(pathname,"/etc/passwd",strlen("/etc/passwd")+1)) {
         return open("/etc/issue.net",flags,mode);
     }
@@ -1070,7 +1083,7 @@ static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen) {
     char ip[INET6_ADDRSTRLEN],response = 'n';
     uint16_t family = addr->sa_family;
     struct sockaddr* saddr = addr;
-    int temp = -2;
+    int ret = -2;
     memset(ip,0,INET6_ADDRSTRLEN*sizeof(char));
     /*new*/
     switch(family) {
@@ -1114,11 +1127,11 @@ failure:
         }
     }
 success:
-    if ((temp = connect(sockfd,addr,addrlen)) == 0)
+    if ((ret = connect(sockfd,addr,addrlen)) == 0)
         printk("CONNECTSUCCESS : %s\n",ip);
     else
         printk("CONNECTFAILURE : %s\n",ip);
-    return temp;
+    return ret;
 }
 
 static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
@@ -1153,7 +1166,7 @@ static int myaccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
 }
 
 ssize_t myread(int fd, void *buf, size_t count) {
-    printk("MYREAD\n");
+    printk("MYREAD for %d bytes\n",count);
     fflush(stdout);
     fflush(stderr);
     return read(fd,buf,count);
