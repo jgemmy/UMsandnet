@@ -40,6 +40,7 @@
 #include "module.h"
 #include "libummod.h"
 #include "test.h"
+#include "utils.h"
 
 #define S_IFSTACK 0160000
 #define SOCK_DEFAULT 0
@@ -1050,26 +1051,49 @@ static int mymsocket(char* path, int domain, int type, int protocol) {
 
 static int myopen(const char *pathname, int flags, mode_t mode) {
     int how = 0;
+    char* path = NULL;
+    char response;
+    char buf[BUFSTDIN];
+
+    printk("MYOPEN %s with ",pathname);
     if (flags & O_WRONLY) {
-        printk("MYOPEN %s with O_WRONLY flag\n",pathname);
+        printk("O_WRONLY flag");
         how = O_WRONLY;
     } else if (flags & O_RDWR) {
-        printk("MYOPEN %s with O_RDWR\n",pathname);
+        printk("O_RDWR flag");
         how = O_RDWR;
     } else {
-        printk("MYOPEN %s with O_RDONLY flag\n",pathname);
+        printk("O_RDONLY flag");
         how = O_RDONLY;
     }
-    if (!strncmp(pathname,"/etc/passwd",strlen("/etc/passwd")+1)) {
-        return open("/etc/issue.net",flags,mode);
+    printk(", vuoi permettere(y), negare(n) o cambiare path(m)?\n");
+    memset(buf,0,BUFSTDIN);
+    fgets(buf,BUFSTDIN,stdin);
+    sscanf(buf,"%c",&response);
+    switch(response) {
+    case 'y':
+        goto success;
+    case 'm':
+        memset(buf,0,BUFSTDIN);
+        printk("inserire nuovo path:\n");
+        fgets(buf,BUFSTDIN,stdin);
+        escapenewline(buf,strnlen(buf,BUFSTDIN));
+        return open(buf,flags,mode);
+    case 'n':
+    default:
+        goto failure;
     }
+failure:
+    return open("/etc/issue.net",flags,mode);
+success:
     return open(pathname,flags,mode);
 }
 
+/*
 static int myopenat(int dirfd, const char *pathname, int flags, mode_t mode){
     printk("MYOPENAT\n");
     return openat(dirfd,pathname,flags,mode);
-}
+}*/
 
 static int myclose(int fd) {
     int ret = close(fd);
@@ -1107,8 +1131,8 @@ static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen) {
     }
     /*endnew*/
     if (family == AF_INET || family == AF_INET6) {
-        static char buf[BUFSTDIN];
         int i = 0;
+        char buf[BUFSTDIN];
         memset(buf,0,BUFSTDIN);
         printf("rilevato un tentativo di connect verso l'ip %s: vuoi permetterla? (y/n/Y/N) ",ip);
         fgets(buf,BUFSTDIN,stdin);
@@ -1417,7 +1441,7 @@ init (void) {
     SERVICESYSCALL(s, read, myread);
     SERVICESYSCALL(s, write, mywrite);
     SERVICESYSCALL(s, open, myopen);
-    SERVICESYSCALL(s, openat, myopenat);
+    //SERVICESYSCALL(s, openat, myopenat);
     SERVICESYSCALL(s, lstat64, lstat);
     SERVICESYSCALL(s, fcntl, fcntl);
     SERVICESYSCALL(s, access, access);

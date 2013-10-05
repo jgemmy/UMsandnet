@@ -3,22 +3,22 @@
 	<ActiveTarget name="Debug" />
 	<File name="test.c" open="1" top="1" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="26213" topLine="1028" />
+			<Cursor1 position="21750" topLine="877" />
 		</Cursor>
 	</File>
-	<File name="module.h" open="1" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="module.h" open="0" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="6467" topLine="210" />
-		</Cursor>
-	</File>
-	<File name="test.h" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="3772" topLine="0" />
+			<Cursor1 position="7663" topLine="210" />
 		</Cursor>
 	</File>
 	<File name="Makefile" open="1" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="215" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="test.h" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="3772" topLine="0" />
 		</Cursor>
 	</File>
 	<File name="utils.h" open="1" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
