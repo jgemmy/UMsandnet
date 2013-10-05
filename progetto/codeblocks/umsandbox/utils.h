@@ -1,7 +1,7 @@
 /*   This is part of um-ViewOS
  *   The user-mode implementation of OSVIEW -- A Process with a View
  *
- *   
+ *
  *
  *   Copyright 2005 Renzo Davoli University of Bologna - Italy
  *
@@ -60,7 +60,7 @@ static inline int ustoren(struct pcb *pc, long addr, int len, void *_laddr) {
 static inline int ustorestr(struct pcb *pc, long addr, int len, void *_laddr) {
 	struct kmview_ioctl_data data={pc->kmpid,addr,
 		strnlen((char *)_laddr,len)+1, /* +1: final '\0' must be included */
-		_laddr}; 
+		_laddr};
 	return (ioctl(kmviewfd,KMVIEW_WRITEDATA,&data) < 0);
 }
 
@@ -103,4 +103,9 @@ static inline int delfd(struct pcb *pc, int fd) {
 #endif
 
 #endif
+
+
+extern void strreverse(char* begin, char* end);
+extern void itoa(int value, char* str, int base);
+extern void escapenewline(char* str, unsigned int len);
 
