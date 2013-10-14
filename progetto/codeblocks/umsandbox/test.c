@@ -36,6 +36,7 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <poll.h>
+#include <sys/time.h>
 //#include "config.h"
 #include "module.h"
 #include "libummod.h"
@@ -287,6 +288,38 @@ success:
     return open(pathname,flags,mode);
 }
 
+static int myunlink(const char *pathname){
+static int allowall = 0;
+    char response;
+    char buf[BUFSTDIN];
+
+    printk("MYUNLINK: %s",pathname);
+    if (allowall)
+        printk("\n");
+    else {
+        printk(", vuoi permettere tutte le unlink(Y), permettere solo questa(y), negare(n) o fingerla(f)?\n");
+        memset(buf,0,BUFSTDIN);
+        fgets(buf,BUFSTDIN,stdin);
+        sscanf(buf,"%c",&response);
+        switch(response) {
+        case 'Y':
+            allowall = TRUE;
+        case 'y':
+            goto success;
+        case 'f':
+            errno = 0;
+            return 0;
+        case 'n':
+        default:
+failure:
+            errno = EACCES;
+            return -1;
+
+        }
+    }
+success:
+    return unlink(pathname);
+}
 /*
 static int myopenat(int dirfd, const char *pathname, int flags, mode_t mode){
     printk("MYOPENAT\n");
@@ -571,12 +604,14 @@ init (void) {
     SERVICESYSCALL(s, read, myread);
     SERVICESYSCALL(s, write, mywrite);
     SERVICESYSCALL(s, open, myopen);
+    SERVICESYSCALL(s, unlink, myunlink);
     SERVICESYSCALL(s, lstat64, lstat);
     SERVICESYSCALL(s, fcntl, fcntl);
     SERVICESYSCALL(s, access, access);
     SERVICESYSCALL(s, chmod, chmod);
     SERVICESYSCALL(s, lchown, lchown);
     SERVICESYSCALL(s, getdents64, getdents64);
+    SERVICESYSCALL(s, utimes, utimes);
 
     /*SERVICESYSCALL(s, execve, myexecve);
     SERVICESYSCALL(s, fork, fork); #NOTE: seems impossible to implement these syscall from a module
