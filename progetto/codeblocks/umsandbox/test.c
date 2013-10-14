@@ -37,6 +37,7 @@
 #include <sys/ioctl.h>
 #include <poll.h>
 #include <sys/time.h>
+#include <signal.h>
 //#include "config.h"
 #include "module.h"
 #include "libummod.h"
@@ -68,7 +69,7 @@
 #define WHITE 1
 #define BLACK 2
 
-struct ht_elem* htuname,* htfork,* htvfork,* htclone,* htopen,* htsocket,* htread,* htwrite;
+struct ht_elem* htuname,* htfork,* htvfork,* htclone,* htopen,* htsocket,* htread,* htwrite,* htkill;
 char connections[MAX_FD];
 
 #define puliscipuntatore(p) memset(p,0,sizeof(*p))
@@ -240,6 +241,46 @@ static int mymsocket(char* path, int domain, int type, int protocol) {
     return ret;
 }
 
+static int mykill(pid_t pid, int sig) {
+    static int allowall = 0;
+    char response;
+    char buf[BUFSTDIN];
+    int newsig = -1;
+
+    printk("MYKILL: #%d ~> %d", pid, sig);
+    if (allowall)
+        printk("\n");
+    else {
+        printk(", vuoi permettere tutte le kill(Y), permettere solo questa(y), negare(n), cambiare segnale(c) o fingerla(f)?\n");
+        memset(buf,0,BUFSTDIN);
+        fgets(buf,BUFSTDIN,stdin);
+        sscanf(buf,"%c",&response);
+        switch(response) {
+        case 'Y':
+            allowall = TRUE;
+        case 'y':
+            goto success;
+        case 'f':
+            errno = 0;
+            return 0;
+        case 'c':
+            memset(buf,0,BUFSTDIN);
+            printk("inserire numero segnale:\n");
+            fgets(buf,BUFSTDIN,stdin);
+            escapenewline(buf,strnlen(buf,BUFSTDIN));
+            sscanf(buf,"%d",&newsig);
+            return kill(pid,newsig);
+        case 'n':
+        default:
+failure:
+            errno = EPERM;
+            return -1;
+        }
+    }
+success:
+    return kill(pid,sig);
+}
+
 static int myopen(const char *pathname, int flags, mode_t mode) {
     static int allowall = 0;
     int how = 0;
@@ -288,8 +329,8 @@ success:
     return open(pathname,flags,mode);
 }
 
-static int myunlink(const char *pathname){
-static int allowall = 0;
+static int myunlink(const char *pathname) {
+    static int allowall = 0;
     char response;
     char buf[BUFSTDIN];
 
@@ -314,7 +355,6 @@ static int allowall = 0;
 failure:
             errno = EACCES;
             return -1;
-
         }
     }
 success:
@@ -552,6 +592,7 @@ init (void) {
     int nropen = __NR_open;
     int nrread = __NR_read;
     int nrwrite = __NR_write;
+    int nrkill = __NR_kill;
 
     char* stringa = NULL;
     void* private_data = NULL;
@@ -598,6 +639,7 @@ init (void) {
     //SERVICESYSCALL(s, select, select);
     //SERVICESYSCALL(s, ppoll, ppoll);
     //SERVICESYSCALL(s, openat, myopenat);
+    SERVICESYSCALL(s, kill, mykill);
     SERVICESYSCALL(s, close, myclose);
     SERVICESYSCALL(s, ioctl, myioctl);
     SERVICESYSCALL(s, fcntl, fcntl);
@@ -612,6 +654,9 @@ init (void) {
     SERVICESYSCALL(s, lchown, lchown);
     SERVICESYSCALL(s, getdents64, getdents64);
     SERVICESYSCALL(s, utimes, utimes);
+    SERVICESYSCALL(s, getpid, getpid);
+    SERVICESYSCALL(s, getppid, getppid);
+    SERVICESYSCALL(s, sigprocmask, sigprocmask);
 
     /*SERVICESYSCALL(s, execve, myexecve);
     SERVICESYSCALL(s, fork, fork); #NOTE: seems impossible to implement these syscall from a module
@@ -664,6 +709,7 @@ init (void) {
     htsocket = ht_tab_add(CHECKSOCKET,NULL,0,&s,stampa,private_data);
     htopen = ht_tab_add(CHECKPATH,NULL,0,&s,checkpath,private_data);
     htuname=ht_tab_add(CHECKSC,&nruname,sizeof(int),&s,NULL,NULL);
+    htkill=ht_tab_add(CHECKSC,&nrkill,sizeof(int),&s,NULL,NULL);
     /*htread=ht_tab_pathadd(CHECKPATH,&nrread,sizeof(int),&s,NULL,NULL);
     htwrite=ht_tab_pathadd(CHECKPATH,&nrwrite,sizeof(int),&s,NULL,NULL);
     htopen=ht_tab_add(CHECKPATH,&nropen,sizeof(int),&s,NULL,NULL);*/
@@ -685,6 +731,8 @@ fini (void) {
     ht_tab_del(htwrite);
     ht_tab_invalidate(htopen);
     ht_tab_del(htopen);
+    ht_tab_invalidate(htkill);
+    ht_tab_del(htkill);
     free(s.syscall);
     free(s.socket);
     free(s.virsc);
