@@ -70,7 +70,7 @@
 #define BLACK 2
 
 struct ht_elem* htuname,* htfork,* htvfork,* htclone,* htopen,* htsocket,* htread,* htwrite,* htkill;
-char connections[MAX_FD];
+//char connections[MAX_FD];
 char permitall = 0;
 char allowall = 0;
 
@@ -176,6 +176,7 @@ static int lookforaddr(struct sockaddr* target) {
     else if (white) return WHITE;
     else return 0;
 }
+
 static int myuname(struct utsname *buf) {
     /*errno=EINVAL;
       return -1;*/
@@ -219,25 +220,27 @@ static int mysocket(int domain, int type, int protocol) {
     return ret;
 }
 */
+
+/*FIXME: add control on raw and pf_packet socket*/
 static int mymsocket(char* path, int domain, int type, int protocol) {
     int ret;
     ret = msocket(path, domain, type, protocol);
     switch(domain) {
-    case AF_LOCAL:
+    case PF_LOCAL:
         printk("msocket locale con parametri path = %s, domain %d, type = %d, proto = %d\n",
                path == NULL? "NULL" : path, domain, type, protocol);
-        connections[ret] = 'L';
+        //connections[ret] = 'L';
         break;
-    case AF_INET:
-        printk("msocket inet4. (%d)\n",AF_INET);
-        connections[ret] = '4';
+    case PF_INET:
+        printk("msocket inet4. (%d)\n",PF_INET);
+        //connections[ret] = '4';
         break;
-    case AF_INET6:
-        printk("msocket inet6. (%d)\n",AF_INET6);
-        connections[ret] = '6';
+    case PF_INET6:
+        printk("msocket inet6. (%d)\n",PF_INET6);
+        //connections[ret] = '6';
         break;
-    case AF_PACKET:
-        printk("msocket af_packet. (%d)\n",AF_PACKET);
+    case PF_PACKET:
+        printk("msocket af_packet. (%d)\n",PF_PACKET);
         break;
     default:
         printk("altro socket richiesto (%d %d %d).\n",domain, type, protocol);
