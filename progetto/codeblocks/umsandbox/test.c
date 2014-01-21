@@ -18,7 +18,7 @@
  *   51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
  *
  */
-
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -71,6 +71,8 @@
 
 struct ht_elem* htuname,* htfork,* htvfork,* htclone,* htopen,* htsocket,* htread,* htwrite,* htkill;
 char connections[MAX_FD];
+char permitall = 0;
+char allowall = 0;
 
 #define puliscipuntatore(p) memset(p,0,sizeof(*p))
 #define puliscistruct(s) memset(&s,0,sizeof(s))
@@ -84,10 +86,12 @@ VIEWOS_SERVICE(s)
 
 
 static int stampa(int type, void *arg, int arglen, struct ht_elem *ht) {
+    #ifdef DEBUG
     printk("PROVA type = %d, arg = %lu, arglen = %d, ht = %lu\n", type, arg, arglen, ht);
+    #endif
     return 1;
 }
-
+/*
 static int checkpath(int type, void *arg, int arglen, struct ht_elem *ht) {
     char dir1[] = "/lib/";
     char dir2[] = "/usr/lib/";
@@ -95,12 +99,12 @@ static int checkpath(int type, void *arg, int arglen, struct ht_elem *ht) {
     char dir4[] = "/etc/";
     //printk("PROVA1 type = %d, arg = %s arglen = %d, ht = %lu\n", type, (char*)arg, arglen, ht);
     if (likely((!strncmp((char*)arg,dir1,strnlen(dir1,PATHLEN))) ||
-               (!strncmp((char*)arg,dir2,strnlen(dir2,PATHLEN)))/*||
-               (!strncmp((char*)arg,dir2,strnlen(dir3,PATHLEN)+1)) ||
-               (!strncmp((char*)arg,dir3,strnlen(dir4,PATHLEN)+1)) */))
+               (!strncmp((char*)arg,dir2,strnlen(dir2,PATHLEN))) ||
+               (!strncmp((char*)arg,dir2,strnlen(dir3,PATHLEN))) ||
+               (!strncmp((char*)arg,dir3,strnlen(dir4,PATHLEN))) ))
         return 0;
     return 1;
-}
+}*/
 
 typedef struct unique {
     struct sockaddr addr;
@@ -143,7 +147,9 @@ static int sockaddrcmp(struct sockaddr* s1, struct sockaddr* s2) {
 
 static lista_t* _lookforaddr(struct sockaddr* target, lista_t* sentinella) {
     lista_t* iter = sentinella;
+    #ifdef DEBUG
     printk("_LOOKFORADDR\n");
+    #endif
     while (iter->next != NULL) {
         iter = iter->next;
         if (iter->addr.sa_family == target->sa_family) {
@@ -163,7 +169,7 @@ static int lookforaddr(struct sockaddr* target) {
     white = _lookforaddr(target,&whitelist);
     black = _lookforaddr(target,&blacklist);
     if (unlikely(black && white)) {
-        printf("lookforaddr: indirizzo sia nella whitelist sia nella blacklist.\n");
+        printk("lookforaddr: indirizzo sia nella whitelist sia nella blacklist.\n");
         fflush(stdout);
         exit(-1);
     } else if (black) return BLACK;
@@ -173,7 +179,9 @@ static int lookforaddr(struct sockaddr* target) {
 static int myuname(struct utsname *buf) {
     /*errno=EINVAL;
       return -1;*/
+    #ifdef DEBUG
     printk("MYUNAME\n");
+    #endif
     if (uname(buf) >= 0) {
         strcpy(buf->sysname,"sandbox_module");
         strcpy(buf->nodename,"sandbox_module");
@@ -185,7 +193,7 @@ static int myuname(struct utsname *buf) {
     } else return -1;
 
 }
-
+/*
 static int mysocket(int domain, int type, int protocol) {
     int ret = socket(domain, type, protocol);
     //printf("socket #%d -> ",ret);
@@ -210,7 +218,7 @@ static int mysocket(int domain, int type, int protocol) {
     }
     return ret;
 }
-
+*/
 static int mymsocket(char* path, int domain, int type, int protocol) {
     int ret;
     ret = msocket(path, domain, type, protocol);
@@ -235,13 +243,15 @@ static int mymsocket(char* path, int domain, int type, int protocol) {
         printk("altro socket richiesto (%d %d %d).\n",domain, type, protocol);
     }
     //fflush(stdout);
+    #ifdef DEBUG
     printk("msocket returned #%d\n",ret);
+    #endif
     fflush(stdout);
     fflush(stderr);
     return ret;
 }
 
-static int mykill(pid_t pid, int sig) {
+/*static int mykill(pid_t pid, int sig) {
     static int allowall = 0;
     char response;
     char buf[BUFSTDIN];
@@ -282,26 +292,20 @@ success:
 }
 
 static int myopen(const char *pathname, int flags, mode_t mode) {
-    static int allowall = 0;
-    int how = 0;
     char* path = NULL;
     char response;
     char buf[BUFSTDIN];
-
+    #ifdef DEBUG
     printk("MYOPEN: %s with ",pathname);
     if (flags & O_WRONLY) {
         printk("O_WRONLY flag");
-        how = O_WRONLY;
     } else if (flags & O_RDWR) {
         printk("O_RDWR flag");
-        how = O_RDWR;
     } else {
         printk("O_RDONLY flag");
-        how = O_RDONLY;
     }
-    if (allowall)
-        printk("\n");
-    else {
+    #endif
+    if (!allowall) {
         printk(", vuoi permettere tutte le open(Y), permettere solo questa(y), negare(n) o cambiare path(m)?\n");
         memset(buf,0,BUFSTDIN);
         fgets(buf,BUFSTDIN,stdin);
@@ -359,7 +363,7 @@ failure:
     }
 success:
     return unlink(pathname);
-}
+}*/
 /*
 static int myopenat(int dirfd, const char *pathname, int flags, mode_t mode){
     printk("MYOPENAT\n");
@@ -368,14 +372,18 @@ static int myopenat(int dirfd, const char *pathname, int flags, mode_t mode){
 
 static int myclose(int fd) {
     int ret = close(fd);
-    printf("myclose: fd=%d, ret=%d.\n",fd,ret);
+    #ifdef DEBUG
+    printk("myclose: fd=%d, ret=%d.\n",fd,ret);
+    #endif
     connections[fd] = (char)0;
     return ret;
 }
 
 /*TODO: ricordare scelta accept/reject*/
 static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen) {
+    #ifdef DEBUG
     printk("%d MYCONNECT (sockfd =  %d, addr = %lu, addrlen = %d\n", um_mod_getsyscallno(),sockfd, addr, (int) addrlen);
+    #endif
     //return connect(sockfd,addr,addrlen);
     char ip[INET6_ADDRSTRLEN],response = 'n';
     uint16_t family = addr->sa_family;
@@ -401,14 +409,17 @@ static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen) {
         break;
     }
     /*endnew*/
+    if (permitall) goto success;
     if (family == AF_INET || family == AF_INET6) {
-        int i = 0;
         char buf[BUFSTDIN];
         memset(buf,0,BUFSTDIN);
-        printf("rilevato un tentativo di connect verso l'ip %s: vuoi permetterla? (y/n/Y/N) ",ip);
+        printk("rilevato un tentativo di connect verso l'ip %s: vuoi permetterla? (A/Y/y/n/N) ",ip);
         fgets(buf,BUFSTDIN,stdin);
         sscanf(buf,"%c",&response);
         switch(response) {
+        case 'A':
+            permitall = 1;
+            goto success;
         case 'Y':
             addaddr(addr,&whitelist);
         case 'y':
@@ -424,17 +435,22 @@ failure:
         }
     }
 success:
-    if ((ret = connect(sockfd,addr,addrlen)) == 0)
+    ret = connect(sockfd,addr,addrlen);
+    #ifdef DEBUG
+    if (ret == 0)
         printk("CONNECTSUCCESS : %s\n",ip);
     else
         printk("CONNECTFAILURE : %s\n",ip);
+    #endif
     return ret;
 }
 
 static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     char ip[INET6_ADDRSTRLEN],response,buf[BUFSTDIN];
     uint16_t port, family = addr->sa_family;
-    printf("bind su fd #%d , family %d \n",sockfd,family);
+    #ifdef DEBUG
+    printk("bind su fd #%d , family %d \n",sockfd,family);
+    #endif
     memset(ip,0,INET6_ADDRSTRLEN*sizeof(char));
     switch(family) {
     case AF_INET:
@@ -447,7 +463,7 @@ static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
         break;
     }
     if (family == AF_INET || family == AF_INET6) {
-        printf("rilevato un tentativo di bind sulla porta %d: vuoi permetterla? (y/n)", port);
+        printk("rilevato un tentativo di bind sulla porta %d: vuoi permetterla? (y/n)", port);
         pulisciarray(buf);
         fgets(buf,BUFSTDIN,stdin);
         sscanf(buf,"%c",&response);
@@ -456,40 +472,48 @@ static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
         return -1;
     } else return bind(sockfd,addr,addrlen);
 }
-
+/*
 static int myaccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
     errno=EACCES;
     return -1;
 }
-
+*/
 ssize_t myread(int fd, void *buf, size_t count) {
+    #ifdef DEBUG
     printk("MYREAD for %d bytes\n",count);
+    #endif
     fflush(stdout);
     fflush(stderr);
     return read(fd,buf,count);
 }
 
 ssize_t mywrite(int fd, const void *buf, size_t count) {
+    #ifdef DEBUG
     printk("MYWRITE\n");
+    #endif
     fflush(stdout);
     fflush(stderr);
     return write(fd,buf,count);
 }
 
 ssize_t myrecv(int sockfd, void *buf, size_t len, int flags) {
+    #ifdef DEBUG
     printk("MYRECV\n");
+    #endif
     fflush(stdout);
     fflush(stderr);
     return recv(sockfd,buf,len,flags);
 }
 
 ssize_t mysend(int sockfd, const void *buf, size_t len, int flags) {
+    #ifdef DEBUG
     printk("MYSEND\n");
+    #endif
     fflush(stdout);
     fflush(stderr);
     return send(sockfd,buf,len,flags);
 }
-
+/*
 static long myioctlparms(int fd, int req) {
     switch (req) {
     case FIONREAD:
@@ -526,8 +550,8 @@ static long myioctlparms(int fd, int req) {
     default:
         return 0;
     }
-}
-
+}*/
+/*
 static int myioctl(int d, int request, void *arg) {
     printk("MYIOCTL\n");
     if (request == SIOCGIFCONF) {
@@ -547,7 +571,7 @@ static int myioctl(int d, int request, void *arg) {
     }
     return ioctl(d,request,arg);
 }
-
+*/
 int myexecve(const char *filename, char *const argv[], char *const envp[]) {
     char response;
     char buf[BUFSTDIN];
@@ -579,20 +603,16 @@ void viewos_fini(void *arg) {
 
 void *viewos_init(char *args) {
     printk("viewos_init\n");
-    return;
+    return NULL;
 }
 
 static void
 __attribute__ ((constructor))
 init (void) {
-    int nruname=__NR_uname;
-    int nrfork = __NR_fork;
-    int nrvfork = __NR_vfork;
-    int nrclone = __NR_clone;
+    int nruname=__NR_uname;/*
     int nropen = __NR_open;
     int nrread = __NR_read;
-    int nrwrite = __NR_write;
-    int nrkill = __NR_kill;
+    int nrwrite = __NR_write;*/
 
     char* stringa = NULL;
     void* private_data = NULL;
@@ -602,7 +622,7 @@ init (void) {
     s.name="umsandbox";
     s.description="usermode sandbox";
     //s.destructor=umnet_destructor;
-    s.ioctlparms=myioctlparms;
+    //s.ioctlparms=ioctlparms;
     s.syscall=(sysfun *)calloc(scmap_scmapsize,sizeof(sysfun));
     s.socket=(sysfun *)calloc(scmap_sockmapsize,sizeof(sysfun));
     s.virsc=(sysfun *)calloc(scmap_virscmapsize,sizeof(sysfun));
@@ -636,17 +656,17 @@ init (void) {
     SERVICESOCKET(s, recvmsg, recvmsg);
     SERVICESOCKET(s, shutdown, shutdown);
 
+    SERVICESYSCALL(s, read, myread);
+    SERVICESYSCALL(s, write, mywrite);
+    //SERVICESYSCALL(s, open, myopen);
+    SERVICESYSCALL(s, close, myclose);
     //SERVICESYSCALL(s, select, select);
     //SERVICESYSCALL(s, ppoll, ppoll);
     //SERVICESYSCALL(s, openat, myopenat);
-    SERVICESYSCALL(s, kill, mykill);
-    SERVICESYSCALL(s, close, myclose);
-    SERVICESYSCALL(s, ioctl, myioctl);
+    /*SERVICESYSCALL(s, kill, kill);
+    SERVICESYSCALL(s, ioctl, ioctl);
     SERVICESYSCALL(s, fcntl, fcntl);
-    SERVICESYSCALL(s, read, myread);
-    SERVICESYSCALL(s, write, mywrite);
-    SERVICESYSCALL(s, open, myopen);
-    SERVICESYSCALL(s, unlink, myunlink);
+    SERVICESYSCALL(s, unlink, unlink);
     SERVICESYSCALL(s, lstat64, lstat);
     SERVICESYSCALL(s, fcntl, fcntl);
     SERVICESYSCALL(s, access, access);
@@ -656,7 +676,7 @@ init (void) {
     SERVICESYSCALL(s, utimes, utimes);
     SERVICESYSCALL(s, getpid, getpid);
     SERVICESYSCALL(s, getppid, getppid);
-    SERVICESYSCALL(s, sigprocmask, sigprocmask);
+    SERVICESYSCALL(s, sigprocmask, sigprocmask);*/
 
     /*SERVICESYSCALL(s, execve, myexecve);
     SERVICESYSCALL(s, fork, fork); #NOTE: seems impossible to implement these syscall from a module
@@ -707,14 +727,14 @@ init (void) {
     asprintf(&stringa,"TEST");
     private_data = (void*) stringa;
     htsocket = ht_tab_add(CHECKSOCKET,NULL,0,&s,stampa,private_data);
-    htopen = ht_tab_add(CHECKPATH,NULL,0,&s,checkpath,private_data);
+    //htopen = ht_tab_add(CHECKPATH,NULL,0,&s,checkpath,private_data);
     htuname=ht_tab_add(CHECKSC,&nruname,sizeof(int),&s,NULL,NULL);
-    htkill=ht_tab_add(CHECKSC,&nrkill,sizeof(int),&s,NULL,NULL);
+    //htkill=ht_tab_add(CHECKSC,&nrkill,sizeof(int),&s,NULL,NULL);
     /*htread=ht_tab_pathadd(CHECKPATH,&nrread,sizeof(int),&s,NULL,NULL);
     htwrite=ht_tab_pathadd(CHECKPATH,&nrwrite,sizeof(int),&s,NULL,NULL);
     htopen=ht_tab_add(CHECKPATH,&nropen,sizeof(int),&s,NULL,NULL);*/
     //s.event_subscribe=umnet_event_subscribe;
-    s.event_subscribe = um_mod_event_subscribe;
+    s.event_subscribe = (sysfun)um_mod_event_subscribe;
     printk("INITEND\n");
 }
 
@@ -731,8 +751,6 @@ fini (void) {
     ht_tab_del(htwrite);
     ht_tab_invalidate(htopen);
     ht_tab_del(htopen);
-    ht_tab_invalidate(htkill);
-    ht_tab_del(htkill);
     free(s.syscall);
     free(s.socket);
     free(s.virsc);

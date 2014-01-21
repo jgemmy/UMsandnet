@@ -54,8 +54,6 @@ struct umsandbox_operations {
 
 #define UMNET_DEBUG       (1 << 29)
 
-typedef void (* voidfun)(void *arg);
-
 struct umnet;
 
 #if 0

@@ -1046,9 +1046,9 @@ init (void)
     int nrvfork = __NR_vfork;
     int nrclone = __NR_clone;
     int nropen = __NR_open;
-	printk(KERN_NOTICE "umnet init\n");
-	s.name="umsandbox";
-	s.description="virtual (multi-stack) networking";
+	printk(KERN_NOTICE "umsandnet init\n");
+	s.name="umsandnet";
+	s.description="interactive networking";
 	s.destructor=umnet_destructor;
 	s.ioctlparms=umnet_ioctlparms;
 	s.syscall=(sysfun *)calloc(scmap_scmapsize,sizeof(sysfun));
@@ -1058,16 +1058,16 @@ init (void)
 
 	MCH_ZERO(&(s.ctlhs));
 	MCH_SET(MC_PROC, &(s.ctlhs));
-	SERVICESYSCALL(s, mount, umnet_mount);
-	SERVICESYSCALL(s, umount2, umnet_umount2);
+	//SERVICESYSCALL(s, mount, umnet_mount);
+	//SERVICESYSCALL(s, umount2, umnet_umount2);
 	SERVICEVIRSYSCALL(s, msocket, mymsocket);
 	SERVICESYSCALL(s, uname, my_uname);
 	SERVICESOCKET(s, connect, myconnect);
 	SERVICESYSCALL(s, close, myclose);
 	//SERVICESYSCALL(s, socket, mysocket);
 
-	SERVICESYSCALL(s, read, myread);
-	SERVICESYSCALL(s, write, mywrite);
+	SERVICESYSCALL(s, read, read);
+	SERVICESYSCALL(s, write, write);
 	/*SERVICESOCKET(s, bind, umnet_bind);
 	SERVICESOCKET(s, listen, umnet_listen);
 	SERVICESOCKET(s, accept, umnet_accept);
@@ -1126,5 +1126,5 @@ fini (void)
 	free(s.socket);
 	free(s.virsc);
 	umnet_delallproc();
-	printk(KERN_NOTICE "umnet fini\n");
+	printk(KERN_NOTICE "umsandnet fini\n");
 }

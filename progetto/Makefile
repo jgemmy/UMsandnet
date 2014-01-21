@@ -7,4 +7,4 @@ clean:
 	sudo rm -f /usr/local/lib/umview/modules/umsandbox.so
 
 install:
-	sudo mv umsandbox.so /usr/local/lib/umview/modules/umsandbox.so
+	mv umsandbox.so /usr/local/lib/umview/modules/umsandbox.so

@@ -181,3 +181,5 @@ list
 Vsd@cs.unibo.it
 http://www.cs.unibo.it/cgi-bin/mailman/listinfo/vsd
 
+
+sudo apt-get install fvwm python-dev build-essential automake autoconf libtool libssl-dev libpcap-dev libmhash-dev libpcap-dev libglib2.0-dev libfuse-dev strace e2fslibs-dev libarchive-dev libcap-dev

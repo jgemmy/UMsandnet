@@ -1,13 +1,13 @@
-GCCFLAGS= -Wall -Wunused -pedantic
+GCCFLAGS= -Wall -Wunused
 LINKERFLAGS=
 
-all: clean test
+all: test
 	
 test: test.o utils.o
 	gcc ${GCCFLAGS} -shared -o libumsandbox.so test.o utils.o
 
 clean:
-	rm -f libumsandbox.so
+	rm -f libumsandbox.so test.o utils.o
 	sudo rm -f /usr/local/lib/umview/modules/umsandbox.so
 
 utils.o: utils.c
