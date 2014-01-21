@@ -73,6 +73,7 @@ struct ht_elem* htuname,* htfork,* htvfork,* htclone,* htopen,* htsocket,* htrea
 //char connections[MAX_FD];
 char permitall = 0;
 char allowall = 0;
+char rawaccess = 0;
 
 #define puliscipuntatore(p) memset(p,0,sizeof(*p))
 #define puliscistruct(s) memset(&s,0,sizeof(s))
@@ -86,9 +87,9 @@ VIEWOS_SERVICE(s)
 
 
 static int stampa(int type, void *arg, int arglen, struct ht_elem *ht) {
-    #ifdef DEBUG
+#ifdef DEBUG
     printk("PROVA type = %d, arg = %lu, arglen = %d, ht = %lu\n", type, arg, arglen, ht);
-    #endif
+#endif
     return 1;
 }
 /*
@@ -147,9 +148,9 @@ static int sockaddrcmp(struct sockaddr* s1, struct sockaddr* s2) {
 
 static lista_t* _lookforaddr(struct sockaddr* target, lista_t* sentinella) {
     lista_t* iter = sentinella;
-    #ifdef DEBUG
+#ifdef DEBUG
     printk("_LOOKFORADDR\n");
-    #endif
+#endif
     while (iter->next != NULL) {
         iter = iter->next;
         if (iter->addr.sa_family == target->sa_family) {
@@ -180,15 +181,15 @@ static int lookforaddr(struct sockaddr* target) {
 static int myuname(struct utsname *buf) {
     /*errno=EINVAL;
       return -1;*/
-    #ifdef DEBUG
+#ifdef DEBUG
     printk("MYUNAME\n");
-    #endif
+#endif
     if (uname(buf) >= 0) {
-        strcpy(buf->sysname,"sandbox_module");
-        strcpy(buf->nodename,"sandbox_module");
-        strcpy(buf->release,"sandbox_module");
-        strcpy(buf->version,"sandbox_module");
-        strcpy(buf->machine,"sandbox_module");
+        strcpy(buf->sysname,"sandnet_module");
+        strcpy(buf->nodename,"sandnet_module");
+        strcpy(buf->release,"sandnet_module");
+        strcpy(buf->version,"sandnet_module");
+        strcpy(buf->machine,"sandnet_module");
         //strcpy(buf->domainname,"mymodule");
         return 0;
     } else return -1;
@@ -225,6 +226,37 @@ static int mysocket(int domain, int type, int protocol) {
 static int mymsocket(char* path, int domain, int type, int protocol) {
     int ret;
     ret = msocket(path, domain, type, protocol);
+    if (unlikely((domain == PF_PACKET) || (((domain == PF_INET) || (domain == PF_INET6)) && (type == SOCK_RAW)))) {
+        if (rawaccess == 2) {
+            errno = EACCES;
+            return -1;
+        }
+        if (!rawaccess) {
+            char buf[BUFSTDIN];
+            char response;
+            memset(buf,0,BUFSTDIN);
+            printk("msocket di basso livello con parametri path = %s, domain %d, type = %d, proto = %d, permettere(Y/y/n/N)?\n",
+                   path == NULL? "NULL" : path, domain, type, protocol);
+            fgets(buf,BUFSTDIN,stdin);
+            sscanf(buf,"%c",&response);
+            switch(response) {
+            case 'Y':
+                rawaccess = 1;
+                break;
+            case 'y':
+                break;
+            case 'n':
+                errno = EACCES;
+                return -1;
+                break;
+            case 'N':
+                rawaccess = 2;
+                errno = EACCES;
+                return -1;
+                break;
+            }
+        }
+    }
     switch(domain) {
     case PF_LOCAL:
         printk("msocket locale con parametri path = %s, domain %d, type = %d, proto = %d\n",
@@ -232,23 +264,23 @@ static int mymsocket(char* path, int domain, int type, int protocol) {
         //connections[ret] = 'L';
         break;
     case PF_INET:
-        printk("msocket inet4. (%d)\n",PF_INET);
+        if (likely(type != SOCK_RAW)) printk("msocket inet4. (%d)\n",PF_INET);
         //connections[ret] = '4';
         break;
     case PF_INET6:
-        printk("msocket inet6. (%d)\n",PF_INET6);
+        if (likely(type != SOCK_RAW)) printk("msocket inet6. (%d)\n",PF_INET6);
         //connections[ret] = '6';
         break;
     case PF_PACKET:
-        printk("msocket af_packet. (%d)\n",PF_PACKET);
+        //printk("msocket af_packet. (%d)\n",PF_PACKET);
         break;
     default:
         printk("altro socket richiesto (%d %d %d).\n",domain, type, protocol);
     }
     //fflush(stdout);
-    #ifdef DEBUG
+#ifdef DEBUG
     printk("msocket returned #%d\n",ret);
-    #endif
+#endif
     fflush(stdout);
     fflush(stderr);
     return ret;
@@ -375,18 +407,18 @@ static int myopenat(int dirfd, const char *pathname, int flags, mode_t mode){
 
 static int myclose(int fd) {
     int ret = close(fd);
-    #ifdef DEBUG
+#ifdef DEBUG
     printk("myclose: fd=%d, ret=%d.\n",fd,ret);
-    #endif
-    connections[fd] = (char)0;
+#endif
+    //connections[fd] = (char)0;
     return ret;
 }
 
 /*TODO: ricordare scelta accept/reject*/
 static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen) {
-    #ifdef DEBUG
+#ifdef DEBUG
     printk("%d MYCONNECT (sockfd =  %d, addr = %lu, addrlen = %d\n", um_mod_getsyscallno(),sockfd, addr, (int) addrlen);
-    #endif
+#endif
     //return connect(sockfd,addr,addrlen);
     char ip[INET6_ADDRSTRLEN],response = 'n';
     uint16_t family = addr->sa_family;
@@ -439,21 +471,21 @@ failure:
     }
 success:
     ret = connect(sockfd,addr,addrlen);
-    #ifdef DEBUG
+#ifdef DEBUG
     if (ret == 0)
         printk("CONNECTSUCCESS : %s\n",ip);
     else
         printk("CONNECTFAILURE : %s\n",ip);
-    #endif
+#endif
     return ret;
 }
 
 static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     char ip[INET6_ADDRSTRLEN],response,buf[BUFSTDIN];
     uint16_t port, family = addr->sa_family;
-    #ifdef DEBUG
+#ifdef DEBUG
     printk("bind su fd #%d , family %d \n",sockfd,family);
-    #endif
+#endif
     memset(ip,0,INET6_ADDRSTRLEN*sizeof(char));
     switch(family) {
     case AF_INET:
@@ -482,36 +514,36 @@ static int myaccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
 }
 */
 ssize_t myread(int fd, void *buf, size_t count) {
-    #ifdef DEBUG
+#ifdef DEBUG
     printk("MYREAD for %d bytes\n",count);
-    #endif
+#endif
     fflush(stdout);
     fflush(stderr);
     return read(fd,buf,count);
 }
 
 ssize_t mywrite(int fd, const void *buf, size_t count) {
-    #ifdef DEBUG
+#ifdef DEBUG
     printk("MYWRITE\n");
-    #endif
+#endif
     fflush(stdout);
     fflush(stderr);
     return write(fd,buf,count);
 }
 
 ssize_t myrecv(int sockfd, void *buf, size_t len, int flags) {
-    #ifdef DEBUG
+#ifdef DEBUG
     printk("MYRECV\n");
-    #endif
+#endif
     fflush(stdout);
     fflush(stderr);
     return recv(sockfd,buf,len,flags);
 }
 
 ssize_t mysend(int sockfd, const void *buf, size_t len, int flags) {
-    #ifdef DEBUG
+#ifdef DEBUG
     printk("MYSEND\n");
-    #endif
+#endif
     fflush(stdout);
     fflush(stderr);
     return send(sockfd,buf,len,flags);
@@ -575,6 +607,7 @@ static int myioctl(int d, int request, void *arg) {
     return ioctl(d,request,arg);
 }
 */
+/*
 int myexecve(const char *filename, char *const argv[], char *const envp[]) {
     char response;
     char buf[BUFSTDIN];
@@ -598,7 +631,7 @@ int myexecve(const char *filename, char *const argv[], char *const envp[]) {
     }
 }
 
-
+*/
 void viewos_fini(void *arg) {
     printk("viewos_fini\n");
     return;
@@ -758,5 +791,6 @@ fini (void) {
     free(s.socket);
     free(s.virsc);
     //umnet_delallproc();
-    printk(KERN_NOTICE "umsandbox fini\n");
+    printk(KERN_NOTICE "umsandnet fini\n");
 }
+
