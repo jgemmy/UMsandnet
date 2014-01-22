@@ -129,7 +129,9 @@ static void addaddr(struct sockaddr* saddr, lista_t* sentinella) {
         lista_t* new = __crea(saddr);
         new->next = sentinella->next;
         sentinella->next = new;
+#ifdef DEBUG
         printk("addaddr ok\n");
+#endif
     }
 }
 
@@ -505,24 +507,25 @@ static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
         fgets(buf,BUFSTDIN,stdin);
         sscanf(buf,"%c",&response);
         switch (response) {
-            case 'Y':
-                permitallbind = 1;
-            case 'y':
-                ret = bind(sockfd, addr, addrlen);
-                printk("bind returns %d\n",ret);
-                return ret;
-            case 'n':
-            default:
-                errno=EACCES;
-                return -1;
+        case 'Y':
+            permitallbind = 1;
+        case 'y':
+            ret = bind(sockfd, addr, addrlen);
+            printk("bind returns %d\n",ret);
+            return ret;
+        case 'n':
+        default:
+            errno=EACCES;
+            return -1;
         }
 
     } else return bind(sockfd,addr,addrlen);
 }
 
 static int myaccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
-
+#ifdef DEBUG
     printk("myaccept\n");
+#endif
     return accept(sockfd,addr,addrlen);
 
     /*errno=EACCES;
@@ -530,8 +533,9 @@ static int myaccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
 }
 
 static int mylisten(int sockfd, int backlog) {
-
+#ifdef DEBUG
     printk("mylisten\n");
+#endif
     return listen(sockfd, backlog);
 
     /*errno=EACCES;
