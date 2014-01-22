@@ -281,9 +281,9 @@ static int mymsocket(char* path, int domain, int type, int protocol) {
     }
     //fflush(stdout);
     ret = msocket(path, domain, type, protocol);
-//#ifdef DEBUG
+#ifdef DEBUG
     printk("msocket returned #%d\n",ret);
-//#endif
+#endif
     fflush(stdout);
     fflush(stderr);
     return ret;
@@ -467,7 +467,7 @@ static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen) {
         case 'n':
         default:
 failure:
-            printk("CONNECTREJECTED\n");
+            printk("CONNECT REJECTED\n");
             errno = EACCES;
             return -1;
         }
@@ -617,7 +617,9 @@ static long myioctlparms(int fd, int req) {
 }
 
 static int myioctl(int d, int request, void *arg) {
+#ifdef DEBUG
     printk("MYIOCTL\n");
+#endif
     if (request == SIOCGIFCONF) {
         int rv;
         void *save;
