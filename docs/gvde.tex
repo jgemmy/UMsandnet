@@ -1,0 +1,47 @@
+\chapter{Gvde}
+\section{Descrizione}
+Gvde è una versione modificata di vde che utilizza memoria condivisa invece dei socket per far comunicare le macchine virtuali connesse allo switch. Si è quindi ritenuto necessario confrontare la nuova versione con la precedente al fine di valutare l'entità di eventuali benefici dovuti alla nuova implementazione.
+\section{Il sistema utilizzato}
+Tutti i test sono stati eseguiti su una distribuzione debian stable (wheezy) utilizzando per gvde il codice fornito e per vde l'ultima versione disponibile sul repository ufficiale. I software utilizzati, tutti presi dai repository debian, sono stati:
+\begin{itemize}
+\item {\em Linux kernel} versione 3.2.0-4-686-pae (3.2.51-1).
+\item {\em Qemu-kvm} versione 1.1.2.
+\item {\em Libvdeplug} versione 2.3.2-4.
+\item {\em Iperf} versione 2.0.5 (08 Jul 2010) pthreads, per le misurazioni della banda e dei pacchetti persi.
+\item {\em Libpcap} versione 1.3.0-1.
+\end{itemize}
+Il computer utilizzato è munito di processore Intel i7 2600K (quadcore con hyperthreading) e 8 GB di memoria ram.
+\section{Gvde vs vde}
+La principale differenza tra gvde e vde sta nella gestione dello smistamento dei pacchetti: in vde lo switch è incaricato di ricevere ed inviare i dati alle macchine virtuali, partecipando quindi attivamente al trasferimento dei dati; in gvde lo smistamento viene effettuato direttamente da libvdeplug, quindi attraverso la libreria caricata, ad esempio, da {\em qemu-kvm}, riducendo quindi l'utilizzo del processore da parte dello switch a zero, compensato però da un maggior utilizzo dello stesso dalle macchine virtuali.
+\subsection{I test effettuati}
+Sono state prese in esame le configurazioni composte da due, quattro e otto macchine virtuali, comunicanti due a due tra di loro attraverso l'utility {\em iperf} pensata specificatamente per analizzare le performance di rete, sia per quanto riguarda l'ampiezza di banda, sia per la percentuale di pacchetti persi.
+\subsection{I risultati}
+\begin{tabular}{|p{0.2\textwidth}|p{0.1\textwidth}|p{0.2\textwidth}|p{0.3\textwidth}|}
+\hline
+#VMs          & IN (ogni VM)        &   OUT (ogni VM)    &   PACKET LOSS    \\
+\hline
+nero            & 0     & zero          &       \\
+marrone         & 1     & uno           &       \\
+rosso           & 2     & due           &       \\
+arancio         & 3     & tre           &       \\
+giallo          & 4     & quattro       &       \\
+verde           & 5     & cinque        &       \\
+blu             & 6     & sei           &       \\
+viola           & 7     & sette         &       \\
+grigio          & 8     & otto          &       \\
+bianco          & 9     & nove          &       \\
+argento         & 10 \% &               & bla bla bla bla bla bla bla bla bla
+                                          bla bla \\
+oro             & 5 \%  &               &       \\
+                & 2 \%  &               &       \\
+                & 1 \%  &               &       \\
+\hline
+\end{tabular}
+\subsection{Conclusioni}
+\section{Vde\_pcapplug2}
+Vde\_pcapplug2 permette di connettere la rete virtuale gestita dallo switch ad un'interfaccia di rete e, quindi, ad una rete fisica esistente, trasmettendo tutto ciò che riceve da un capo della connessione all'altro, ovvero inoltrando tutto il traffico proveniente dallo switch sulla rete fisica e viceversa.
+La particolarità di vde\_pcapplug2 sta nel sfruttare socket mmappati per ricevere e trasmettere pacchetti invece di utilizzare la libreria libpcap, ovvero condividendo due porzioni di memoria con il kernel attraverso la syscall {\em mmap()}, le quali saranno trattate come due buffer circolari, uno per la ricezione ed uno per l'invio.
+\subsection{I test effettuati}
+Sono stati effettuati test analizzando il traffico passante tra una macchina virtuale collegata allo switch e una macchina connessa alla rete fisica, con i protocolli TCP ed UDP.
+\subsection{I risultati}
+\subsection{Conclusioni}

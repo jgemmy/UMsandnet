@@ -1,0 +1,17 @@
+\select@language {italian}
+\contentsline {chapter}{\numberline {1}UMsandnet}{5}
+\contentsline {section}{\numberline {1.1}Descrizione}{5}
+\contentsline {section}{\numberline {1.2}Funzionamento}{5}
+\contentsline {section}{\numberline {1.3}Possibili utilizzi}{6}
+\contentsline {section}{\numberline {1.4}Sviluppi futuri}{6}
+\contentsline {chapter}{\numberline {2}Gvde}{7}
+\contentsline {section}{\numberline {2.1}Descrizione}{7}
+\contentsline {section}{\numberline {2.2}Il sistema utilizzato}{7}
+\contentsline {section}{\numberline {2.3}Gvde vs vde}{8}
+\contentsline {subsection}{\numberline {2.3.1}I test effettuati}{8}
+\contentsline {subsection}{\numberline {2.3.2}I risultati}{8}
+\contentsline {subsection}{\numberline {2.3.3}Conclusioni}{9}
+\contentsline {section}{\numberline {2.4}Vde\_pcapplug2}{9}
+\contentsline {subsection}{\numberline {2.4.1}I test effettuati}{9}
+\contentsline {subsection}{\numberline {2.4.2}I risultati}{9}
+\contentsline {subsection}{\numberline {2.4.3}Conclusioni}{9}
