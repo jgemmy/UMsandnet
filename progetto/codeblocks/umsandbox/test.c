@@ -74,6 +74,7 @@ struct ht_elem* htuname,* htfork,* htvfork,* htclone,* htopen,* htsocket,* htrea
 char permitall = 0;
 char allowall = 0;
 char rawaccess = 0;
+char permitallbind = 0;
 
 #define puliscipuntatore(p) memset(p,0,sizeof(*p))
 #define puliscistruct(s) memset(&s,0,sizeof(s))
@@ -225,7 +226,6 @@ static int mysocket(int domain, int type, int protocol) {
 /*FIXME: add control on raw and pf_packet socket*/
 static int mymsocket(char* path, int domain, int type, int protocol) {
     int ret;
-    ret = msocket(path, domain, type, protocol);
     if (unlikely((domain == PF_PACKET) || (((domain == PF_INET) || (domain == PF_INET6)) && (type == SOCK_RAW)))) {
         if (rawaccess == 2) {
             errno = EACCES;
@@ -264,11 +264,11 @@ static int mymsocket(char* path, int domain, int type, int protocol) {
         //connections[ret] = 'L';
         break;
     case PF_INET:
-        if (likely(type != SOCK_RAW)) printk("msocket inet4. (%d)\n",PF_INET);
+        if (likely(type != SOCK_RAW)) printk("msocket inet4.\n");
         //connections[ret] = '4';
         break;
     case PF_INET6:
-        if (likely(type != SOCK_RAW)) printk("msocket inet6. (%d)\n",PF_INET6);
+        if (likely(type != SOCK_RAW)) printk("msocket inet6.\n");
         //connections[ret] = '6';
         break;
     case PF_PACKET:
@@ -278,9 +278,10 @@ static int mymsocket(char* path, int domain, int type, int protocol) {
         printk("altro socket richiesto (%d %d %d).\n",domain, type, protocol);
     }
     //fflush(stdout);
-#ifdef DEBUG
+    ret = msocket(path, domain, type, protocol);
+//#ifdef DEBUG
     printk("msocket returned #%d\n",ret);
-#endif
+//#endif
     fflush(stdout);
     fflush(stderr);
     return ret;
@@ -481,7 +482,7 @@ success:
 }
 
 static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
-    char ip[INET6_ADDRSTRLEN],response,buf[BUFSTDIN];
+    char ip[INET6_ADDRSTRLEN],response = 'n',buf[BUFSTDIN];
     uint16_t port, family = addr->sa_family;
 #ifdef DEBUG
     printk("bind su fd #%d , family %d \n",sockfd,family);
@@ -497,22 +498,46 @@ static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
         port = ntohs(((struct sockaddr_in6 *)addr)->sin6_port);
         break;
     }
-    if (family == AF_INET || family == AF_INET6) {
-        printk("rilevato un tentativo di bind sulla porta %d: vuoi permetterla? (y/n)", port);
+    if (!permitallbind && (family == AF_INET || family == AF_INET6)) {
+        int ret;
+        printk("rilevato un tentativo di bind(%d) sulla porta %d: vuoi permetterla? (Y/y/n)\n", sockfd, port);
         pulisciarray(buf);
         fgets(buf,BUFSTDIN,stdin);
         sscanf(buf,"%c",&response);
-        if (response == 'y') return bind(sockfd, addr, addrlen);
-        errno=EACCES;
-        return -1;
+        switch (response) {
+            case 'Y':
+                permitallbind = 1;
+            case 'y':
+                ret = bind(sockfd, addr, addrlen);
+                printk("bind returns %d\n",ret);
+                return ret;
+            case 'n':
+            default:
+                errno=EACCES;
+                return -1;
+        }
+
     } else return bind(sockfd,addr,addrlen);
 }
-/*
+
 static int myaccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
-    errno=EACCES;
-    return -1;
+
+    printk("myaccept\n");
+    return accept(sockfd,addr,addrlen);
+
+    /*errno=EACCES;
+    return -1;*/
 }
-*/
+
+static int mylisten(int sockfd, int backlog) {
+
+    printk("mylisten\n");
+    return listen(sockfd, backlog);
+
+    /*errno=EACCES;
+    return -1;*/
+}
+
 ssize_t myread(int fd, void *buf, size_t count) {
 #ifdef DEBUG
     printk("MYREAD for %d bytes\n",count);
@@ -548,7 +573,7 @@ ssize_t mysend(int sockfd, const void *buf, size_t len, int flags) {
     fflush(stderr);
     return send(sockfd,buf,len,flags);
 }
-/*
+
 static long myioctlparms(int fd, int req) {
     switch (req) {
     case FIONREAD:
@@ -585,8 +610,8 @@ static long myioctlparms(int fd, int req) {
     default:
         return 0;
     }
-}*/
-/*
+}
+
 static int myioctl(int d, int request, void *arg) {
     printk("MYIOCTL\n");
     if (request == SIOCGIFCONF) {
@@ -606,7 +631,7 @@ static int myioctl(int d, int request, void *arg) {
     }
     return ioctl(d,request,arg);
 }
-*/
+
 /*
 int myexecve(const char *filename, char *const argv[], char *const envp[]) {
     char response;
@@ -678,8 +703,8 @@ init (void) {
     SERVICEVIRSYSCALL(s, msocket, mymsocket);
     SERVICESOCKET(s, connect, myconnect);
     SERVICESOCKET(s, bind, mybind);
-    SERVICESOCKET(s, listen, listen);
-    SERVICESOCKET(s, accept, accept);
+    SERVICESOCKET(s, listen, mylisten);
+    SERVICESOCKET(s, accept, myaccept);
     SERVICESOCKET(s, getsockopt, getsockopt);
     SERVICESOCKET(s, setsockopt, setsockopt);
     SERVICESOCKET(s, getsockname, getsockname);
@@ -696,11 +721,12 @@ init (void) {
     SERVICESYSCALL(s, write, mywrite);
     //SERVICESYSCALL(s, open, myopen);
     SERVICESYSCALL(s, close, myclose);
+    SERVICESYSCALL(s, ioctl, myioctl);
     //SERVICESYSCALL(s, select, select);
     //SERVICESYSCALL(s, ppoll, ppoll);
     //SERVICESYSCALL(s, openat, myopenat);
     /*SERVICESYSCALL(s, kill, kill);
-    SERVICESYSCALL(s, ioctl, ioctl);
+
     SERVICESYSCALL(s, fcntl, fcntl);
     SERVICESYSCALL(s, unlink, unlink);
     SERVICESYSCALL(s, lstat64, lstat);
@@ -770,6 +796,7 @@ init (void) {
     htwrite=ht_tab_pathadd(CHECKPATH,&nrwrite,sizeof(int),&s,NULL,NULL);
     htopen=ht_tab_add(CHECKPATH,&nropen,sizeof(int),&s,NULL,NULL);*/
     //s.event_subscribe=umnet_event_subscribe;
+    s.ioctlparms = (sysfun) myioctlparms;
     s.event_subscribe = (sysfun)um_mod_event_subscribe;
     printk("INITEND\n");
 }
