@@ -1,4 +1,4 @@
-umsandbox
+UMsandnet for UMview
 =========
 
-project for virtualsquare.org
+more infos @ virtualsquare.org
