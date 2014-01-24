@@ -58,7 +58,6 @@ char permitallbind = 0;
 
 #define puliscipuntatore(p) memset(p,0,sizeof(*p))
 #define puliscistruct(s) memset(&s,0,sizeof(s))
-#define pulisciarray(a) memset(a,0,sizeof(a))
 #define likely(x) __builtin_expect((x),1)
 #define unlikely(x) __builtin_expect((x),0)
 
@@ -321,7 +320,7 @@ static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     if (!permitallbind && (family == AF_INET || family == AF_INET6)) {
         int ret;
         printk("rilevato un tentativo di bind(%d) sulla porta %d: vuoi permetterla? (Y/y/n)\n", sockfd, port);
-        pulisciarray(buf);
+        memset(buf,0,BUFSTDIN);
         fgets(buf,BUFSTDIN,stdin);
         sscanf(buf,"%c",&response);
         switch (response) {
