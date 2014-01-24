@@ -1,23 +1,22 @@
-/*   This is part of um-ViewOS
- *   The user-mode implementation of OSVIEW -- A Process with a View
- *
- *   UMNET: (Multi) Networking in User Space
- *   Copyright (C) 2008  Renzo Davoli <renzo@cs.unibo.it>
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License, version 2, as
- *   published by the Free Software Foundation.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License along
- *   with this program; if not, write to the Free Software Foundation, Inc.,
- *   51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
- *
- */
+/*
+ **   UMsandnet: POC firewall module for UMview.
+ * *   Copyright (C) 2014 phra
+ *  *
+ *   *   This program is free software; you can redistribute it and/or modify
+ *    *   it under the terms of the GNU General Public License, version 2, as
+ *     *   published by the Free Software Foundation.
+ *      *
+ *       *   This program is distributed in the hope that it will be useful,
+ *        *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *         *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *          *   GNU General Public License for more details.
+ *           *
+ *            *   You should have received a copy of the GNU General Public License
+ *             *   along with this program; if not, write to the Free Software Foundation, Inc.,
+ *              *   51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
+ *               *
+ ******************/
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,30 +37,12 @@
 #include <poll.h>
 #include <sys/time.h>
 #include <signal.h>
-//#include "config.h"
 #include "module.h"
 #include "libummod.h"
-#include "test.h"
-#include "utils.h"
-
-#define S_IFSTACK 0160000
-#define SOCK_DEFAULT 0
 
 #define TRUE 1
 #define FALSE 0
 #define printf printk
-
-//#define DEFAULT_NET_PATH "/dev/net/default"
-
-#ifndef __UMNET_DEBUG_LEVEL__
-#define __UMNET_DEBUG_LEVEL__ 0
-#endif
-
-#ifdef __UMNET_DEBUG__
-#define PRINTDEBUG(level,args...) printdebug(level, __FILE__, __LINE__, __func__, args)
-#else
-#define PRINTDEBUG(level,args...)
-#endif
 
 #define BUFSTDIN 16
 #define PATHLEN 256
@@ -69,8 +50,7 @@
 #define WHITE 1
 #define BLACK 2
 
-struct ht_elem* htuname,* htfork,* htvfork,* htclone,* htopen,* htsocket,* htread,* htwrite,* htkill;
-//char connections[MAX_FD];
+struct ht_elem* htuname,* htsocket;
 char permitall = 0;
 char allowall = 0;
 char rawaccess = 0;
@@ -93,20 +73,6 @@ static int stampa(int type, void *arg, int arglen, struct ht_elem *ht) {
 #endif
     return 1;
 }
-/*
-static int checkpath(int type, void *arg, int arglen, struct ht_elem *ht) {
-    char dir1[] = "/lib/";
-    char dir2[] = "/usr/lib/";
-    char dir3[] = "/bin/";
-    char dir4[] = "/etc/";
-    //printk("PROVA1 type = %d, arg = %s arglen = %d, ht = %lu\n", type, (char*)arg, arglen, ht);
-    if (likely((!strncmp((char*)arg,dir1,strnlen(dir1,PATHLEN))) ||
-               (!strncmp((char*)arg,dir2,strnlen(dir2,PATHLEN))) ||
-               (!strncmp((char*)arg,dir2,strnlen(dir3,PATHLEN))) ||
-               (!strncmp((char*)arg,dir3,strnlen(dir4,PATHLEN))) ))
-        return 0;
-    return 1;
-}*/
 
 typedef struct unique {
     struct sockaddr addr;
@@ -169,7 +135,6 @@ static lista_t* _lookforaddr(struct sockaddr* target, lista_t* sentinella) {
 
 static int lookforaddr(struct sockaddr* target) {
     lista_t* white,* black;
-    //printk("LOOKFORADDR!\n");
     white = _lookforaddr(target,&whitelist);
     black = _lookforaddr(target,&blacklist);
     if (unlikely(black && white)) {
@@ -182,8 +147,6 @@ static int lookforaddr(struct sockaddr* target) {
 }
 
 static int myuname(struct utsname *buf) {
-    /*errno=EINVAL;
-      return -1;*/
 #ifdef DEBUG
     printk("MYUNAME\n");
 #endif
@@ -193,39 +156,11 @@ static int myuname(struct utsname *buf) {
         strcpy(buf->release,"sandnet_module");
         strcpy(buf->version,"sandnet_module");
         strcpy(buf->machine,"sandnet_module");
-        //strcpy(buf->domainname,"mymodule");
         return 0;
     } else return -1;
 
 }
-/*
-static int mysocket(int domain, int type, int protocol) {
-    int ret = socket(domain, type, protocol);
-    //printf("socket #%d -> ",ret);
-    switch(domain) {
-    case AF_LOCAL:
-        printf("socket locale. (%d)\n",AF_LOCAL);
-        connections[ret] = 'L';
-        break;
-    case AF_INET:
-        printf("socket inet4. (%d)\n",AF_INET);
-        connections[ret] = '4';
-        break;
-    case AF_INET6:
-        printf("socket inet6. (%d)\n",AF_INET6);
-        connections[ret] = '6';
-        break;
-    case AF_PACKET:
-        printf("socket af_packet. (%d)\n",AF_PACKET);
-        break;
-    default:
-        printf("altro socket richiesto (%d %d %d).\n",domain, type, protocol);
-    }
-    return ret;
-}
-*/
 
-/*FIXME: add control on raw and pf_packet socket*/
 static int mymsocket(char* path, int domain, int type, int protocol) {
     int ret;
     if (unlikely((domain == PF_PACKET) || (((domain == PF_INET) || (domain == PF_INET6)) && (type == SOCK_RAW)))) {
@@ -261,25 +196,30 @@ static int mymsocket(char* path, int domain, int type, int protocol) {
     }
     switch(domain) {
     case PF_LOCAL:
+#ifdef DEBUG
         printk("msocket locale con parametri path = %s, domain %d, type = %d, proto = %d\n",
                path == NULL? "NULL" : path, domain, type, protocol);
-        //connections[ret] = 'L';
+#endif
         break;
     case PF_INET:
+#ifdef DEBUG
         if (likely(type != SOCK_RAW)) printk("msocket inet4.\n");
-        //connections[ret] = '4';
+#endif
         break;
     case PF_INET6:
+#ifdef DEBUG
         if (likely(type != SOCK_RAW)) printk("msocket inet6.\n");
-        //connections[ret] = '6';
+#endif
         break;
     case PF_PACKET:
-        //printk("msocket af_packet. (%d)\n",PF_PACKET);
         break;
     default:
+#ifdef DEBUG
         printk("altro socket richiesto (%d %d %d).\n",domain, type, protocol);
+        ù
+#endif
+        break;
     }
-    //fflush(stdout);
     ret = msocket(path, domain, type, protocol);
 #ifdef DEBUG
     printk("msocket returned #%d\n",ret);
@@ -289,146 +229,23 @@ static int mymsocket(char* path, int domain, int type, int protocol) {
     return ret;
 }
 
-/*static int mykill(pid_t pid, int sig) {
-    static int allowall = 0;
-    char response;
-    char buf[BUFSTDIN];
-    int newsig = -1;
-
-    printk("MYKILL: #%d ~> %d", pid, sig);
-    if (allowall)
-        printk("\n");
-    else {
-        printk(", vuoi permettere tutte le kill(Y), permettere solo questa(y), negare(n), cambiare segnale(c) o fingerla(f)?\n");
-        memset(buf,0,BUFSTDIN);
-        fgets(buf,BUFSTDIN,stdin);
-        sscanf(buf,"%c",&response);
-        switch(response) {
-        case 'Y':
-            allowall = TRUE;
-        case 'y':
-            goto success;
-        case 'f':
-            errno = 0;
-            return 0;
-        case 'c':
-            memset(buf,0,BUFSTDIN);
-            printk("inserire numero segnale:\n");
-            fgets(buf,BUFSTDIN,stdin);
-            escapenewline(buf,strnlen(buf,BUFSTDIN));
-            sscanf(buf,"%d",&newsig);
-            return kill(pid,newsig);
-        case 'n':
-        default:
-failure:
-            errno = EPERM;
-            return -1;
-        }
-    }
-success:
-    return kill(pid,sig);
-}
-
-static int myopen(const char *pathname, int flags, mode_t mode) {
-    char* path = NULL;
-    char response;
-    char buf[BUFSTDIN];
-    #ifdef DEBUG
-    printk("MYOPEN: %s with ",pathname);
-    if (flags & O_WRONLY) {
-        printk("O_WRONLY flag");
-    } else if (flags & O_RDWR) {
-        printk("O_RDWR flag");
-    } else {
-        printk("O_RDONLY flag");
-    }
-    #endif
-    if (!allowall) {
-        printk(", vuoi permettere tutte le open(Y), permettere solo questa(y), negare(n) o cambiare path(m)?\n");
-        memset(buf,0,BUFSTDIN);
-        fgets(buf,BUFSTDIN,stdin);
-        sscanf(buf,"%c",&response);
-        switch(response) {
-        case 'Y':
-            allowall = TRUE;
-        case 'y':
-            goto success;
-        case 'm':
-            memset(buf,0,BUFSTDIN);
-            printk("inserire nuovo path:\n");
-            fgets(buf,BUFSTDIN,stdin);
-            escapenewline(buf,strnlen(buf,BUFSTDIN));
-            return open(buf,flags,mode);
-        case 'n':
-        default:
-failure:
-            errno = EACCES;
-            return -1;
-
-        }
-    }
-success:
-    return open(pathname,flags,mode);
-}
-
-static int myunlink(const char *pathname) {
-    static int allowall = 0;
-    char response;
-    char buf[BUFSTDIN];
-
-    printk("MYUNLINK: %s",pathname);
-    if (allowall)
-        printk("\n");
-    else {
-        printk(", vuoi permettere tutte le unlink(Y), permettere solo questa(y), negare(n) o fingerla(f)?\n");
-        memset(buf,0,BUFSTDIN);
-        fgets(buf,BUFSTDIN,stdin);
-        sscanf(buf,"%c",&response);
-        switch(response) {
-        case 'Y':
-            allowall = TRUE;
-        case 'y':
-            goto success;
-        case 'f':
-            errno = 0;
-            return 0;
-        case 'n':
-        default:
-failure:
-            errno = EACCES;
-            return -1;
-        }
-    }
-success:
-    return unlink(pathname);
-}*/
-/*
-static int myopenat(int dirfd, const char *pathname, int flags, mode_t mode){
-    printk("MYOPENAT\n");
-    return openat(dirfd,pathname,flags,mode);
-}*/
-
 static int myclose(int fd) {
     int ret = close(fd);
 #ifdef DEBUG
     printk("myclose: fd=%d, ret=%d.\n",fd,ret);
 #endif
-    //connections[fd] = (char)0;
     return ret;
 }
 
-/*TODO: ricordare scelta accept/reject*/
 static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen) {
 #ifdef DEBUG
     printk("%d MYCONNECT (sockfd =  %d, addr = %lu, addrlen = %d\n", um_mod_getsyscallno(),sockfd, addr, (int) addrlen);
 #endif
-    //return connect(sockfd,addr,addrlen);
     char ip[INET6_ADDRSTRLEN],response = 'n';
     uint16_t family = addr->sa_family;
     struct sockaddr* saddr = addr;
     int ret = -2;
     memset(ip,0,INET6_ADDRSTRLEN*sizeof(char));
-    /*new*/
     switch(family) {
     case AF_INET:
         inet_ntop(AF_INET, &(((struct sockaddr_in *)addr)->sin_addr),ip,INET_ADDRSTRLEN);
@@ -446,7 +263,6 @@ static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen) {
     default:
         break;
     }
-    /*endnew*/
     if (permitall) goto success;
     if (family == AF_INET || family == AF_INET6) {
         char buf[BUFSTDIN];
@@ -474,9 +290,11 @@ failure:
     }
 success:
     ret = connect(sockfd,addr,addrlen);
+    if (likely(ret == 0)) {
+        if (family == PF_INET || family == PF_INET6)
+            printk("CONNECT SUCCESS : %s\n",ip);
+    }
 #ifdef DEBUG
-    if (ret == 0)
-        printk("CONNECT SUCCESS : %s\n",ip);
     else
         printk("CONNECT FAILURE : %s\n",ip);
 #endif
@@ -511,7 +329,9 @@ static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
             permitallbind = 1;
         case 'y':
             ret = bind(sockfd, addr, addrlen);
+#ifdef DEBUG
             printk("bind returns %d\n",ret);
+#endif
             return ret;
         case 'n':
         default:
@@ -527,9 +347,6 @@ static int myaccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
     printk("myaccept\n");
 #endif
     return accept(sockfd,addr,addrlen);
-
-    /*errno=EACCES;
-    return -1;*/
 }
 
 static int mylisten(int sockfd, int backlog) {
@@ -537,9 +354,6 @@ static int mylisten(int sockfd, int backlog) {
     printk("mylisten\n");
 #endif
     return listen(sockfd, backlog);
-
-    /*errno=EACCES;
-    return -1;*/
 }
 
 ssize_t myread(int fd, void *buf, size_t count) {
@@ -638,74 +452,28 @@ static int myioctl(int d, int request, void *arg) {
     return ioctl(d,request,arg);
 }
 
-/*
-int myexecve(const char *filename, char *const argv[], char *const envp[]) {
-    char response;
-    char buf[BUFSTDIN];
-    int i = 0;
-    memset(buf,0,BUFSTDIN);
-    printf("MYEXECVE: %s ",filename);
-    while (argv[++i]) {
-        printf("%s", argv[i]);
-    }
-    printf("; vuoi permetterla? (y/n) ");
-    fgets(buf,BUFSTDIN,stdin);
-    sscanf(buf,"%c",&response);
-    switch(response) {
-    case 'y':
-        //return execve(filename,argv,envp);
-        return 0x0;
-    case 'n':
-    default:
-        errno = EACCES;
-        return -1;
-    }
-}
-
-*/
 void viewos_fini(void *arg) {
-    printk("viewos_fini\n");
+    printk("umsandnet_fini\n");
     return;
 }
 
 void *viewos_init(char *args) {
-    printk("viewos_init\n");
+    printk("umsandnet_init\n");
     return NULL;
 }
 
 static void
 __attribute__ ((constructor))
 init (void) {
-    int nruname=__NR_uname;/*
-    int nropen = __NR_open;
-    int nrread = __NR_read;
-    int nrwrite = __NR_write;*/
-
-    char* stringa = NULL;
-    void* private_data = NULL;
-
-    printk(KERN_NOTICE "umsandbox init\n");
-    //memset(&s,0,sizeof(s));
-    s.name="umsandbox";
-    s.description="usermode sandbox";
-    //s.destructor=umnet_destructor;
-    //s.ioctlparms=ioctlparms;
+    int nruname=__NR_uname;
+    memset(&s,0,sizeof(s));
+    s.name="umsandnet";
+    s.description="umsandnet";
     s.syscall=(sysfun *)calloc(scmap_scmapsize,sizeof(sysfun));
     s.socket=(sysfun *)calloc(scmap_sockmapsize,sizeof(sysfun));
     s.virsc=(sysfun *)calloc(scmap_virscmapsize,sizeof(sysfun));
-    /*memset(s.syscall,0,sizeof(sysfun)*scmap_scmapsize);
-      memset(s.socket,0,sizeof(sysfun)*scmap_sockmapsize);
-      memset(s.virsc,0,sizeof(sysfun)*scmap_virscmapsize);*/
-    //s.ctl = umnet_ctl;
     SERVICESYSCALL(s, uname, myuname);
     MCH_ZERO(&(s.ctlhs));
-    /*
-       MCH_SET(MC_PROC, &(s.ctlhs));
-       SERVICESYSCALL(s, mount, mount);
-       SERVICESYSCALL(s, umount2, umount2);*/
-
-    //SERVICESOCKET(s, socket, mysocket);
-    //
     SERVICEVIRSYSCALL(s, msocket, mymsocket);
     SERVICESOCKET(s, connect, myconnect);
     SERVICESOCKET(s, bind, mybind);
@@ -722,89 +490,14 @@ init (void) {
     SERVICESOCKET(s, sendmsg, sendmsg);
     SERVICESOCKET(s, recvmsg, recvmsg);
     SERVICESOCKET(s, shutdown, shutdown);
-
     SERVICESYSCALL(s, read, myread);
     SERVICESYSCALL(s, write, mywrite);
-    //SERVICESYSCALL(s, open, myopen);
     SERVICESYSCALL(s, close, myclose);
     SERVICESYSCALL(s, ioctl, myioctl);
-    //SERVICESYSCALL(s, select, select);
-    //SERVICESYSCALL(s, ppoll, ppoll);
-    //SERVICESYSCALL(s, openat, myopenat);
-    /*SERVICESYSCALL(s, kill, kill);
-
-    SERVICESYSCALL(s, fcntl, fcntl);
-    SERVICESYSCALL(s, unlink, unlink);
-    SERVICESYSCALL(s, lstat64, lstat);
-    SERVICESYSCALL(s, fcntl, fcntl);
-    SERVICESYSCALL(s, access, access);
-    SERVICESYSCALL(s, chmod, chmod);
-    SERVICESYSCALL(s, lchown, lchown);
-    SERVICESYSCALL(s, getdents64, getdents64);
-    SERVICESYSCALL(s, utimes, utimes);
-    SERVICESYSCALL(s, getpid, getpid);
-    SERVICESYSCALL(s, getppid, getppid);
-    SERVICESYSCALL(s, sigprocmask, sigprocmask);*/
-
-    /*SERVICESYSCALL(s, execve, myexecve);
-    SERVICESYSCALL(s, fork, fork); #NOTE: seems impossible to implement these syscall from a module
-    SERVICESYSCALL(s, vfork, vfork);*/
-
-
-    /*SERVICESOCKET(s, send, mysend);
-      SERVICESOCKET(s, recv, myrecv);
-      SERVICESYSCALL(s, read, read);
-      SERVICESYSCALL(s, write, write);
-      SERVICESOCKET(s, bind, umnet_bind);
-      SERVICESOCKET(s, listen, umnet_listen);
-      SERVICESOCKET(s, accept, umnet_accept);
-      SERVICESOCKET(s, getsockname, umnet_getsockname);
-      SERVICESOCKET(s, getpeername, umnet_getpeername);
-      SERVICESOCKET(s, send, umnet_send);
-      SERVICESOCKET(s, recv, umnet_recv);
-      SERVICESOCKET(s, sendto, umnet_sendto);
-      SERVICESOCKET(s, recvfrom, umnet_recvfrom);
-      SERVICESOCKET(s, sendmsg, umnet_sendmsg);
-      SERVICESOCKET(s, recvmsg, umnet_recvmsg);
-      SERVICESOCKET(s, getsockopt, umnet_getsockopt);
-      SERVICESOCKET(s, setsockopt, umnet_setsockopt);
-      SERVICESYSCALL(s, read, umnet_read);
-      SERVICESYSCALL(s, write, umnet_write);
-      SERVICESYSCALL(s, close, myclose);
-      SERVICESYSCALL(s, lstat64, lstat);
-      SERVICESYSCALL(s, fcntl, umnet_fcntl64);
-      SERVICESYSCALL(s, access, umnet_access);
-      SERVICESYSCALL(s, chmod, umnet_chmod);
-      SERVICESYSCALL(s, lchown, umnet_lchown);
-      SERVICESYSCALL(s, ioctl, umnet_ioctl);*/
-    /*
-           SERVICESOCKET(s, bind, bind);
-           SERVICESOCKET(s, listen, listen);
-           SERVICESOCKET(s, accept, accept);
-           SERVICESOCKET(s, getsockname, getsockname);
-           SERVICESOCKET(s, getpeername, getpeername);
-
-           SERVICESOCKET(s, sendto, sendto);
-           SERVICESOCKET(s, recvfrom, recvfrom);
-           SERVICESOCKET(s, sendmsg, sendmsg);
-           SERVICESOCKET(s, recvmsg, recvmsg);
-           SERVICESOCKET(s, getsockopt, getsockopt);
-           SERVICESOCKET(s, setsockopt, setsockopt);*/
-
-
-    asprintf(&stringa,"TEST");
-    private_data = (void*) stringa;
-    htsocket = ht_tab_add(CHECKSOCKET,NULL,0,&s,stampa,private_data);
-    //htopen = ht_tab_add(CHECKPATH,NULL,0,&s,checkpath,private_data);
+    htsocket = ht_tab_add(CHECKSOCKET,NULL,0,&s,stampa,NULL);
     htuname=ht_tab_add(CHECKSC,&nruname,sizeof(int),&s,NULL,NULL);
-    //htkill=ht_tab_add(CHECKSC,&nrkill,sizeof(int),&s,NULL,NULL);
-    /*htread=ht_tab_pathadd(CHECKPATH,&nrread,sizeof(int),&s,NULL,NULL);
-    htwrite=ht_tab_pathadd(CHECKPATH,&nrwrite,sizeof(int),&s,NULL,NULL);
-    htopen=ht_tab_add(CHECKPATH,&nropen,sizeof(int),&s,NULL,NULL);*/
-    //s.event_subscribe=umnet_event_subscribe;
     s.ioctlparms = (sysfun) myioctlparms;
     s.event_subscribe = (sysfun)um_mod_event_subscribe;
-    printk("INITEND\n");
 }
 
 static void
@@ -813,17 +506,10 @@ fini (void) {
     ht_tab_invalidate(htsocket);
     ht_tab_del(htsocket);
     ht_tab_invalidate(htuname);
-    /*ht_tab_del(htuname);
-    ht_tab_invalidate(htread);
-    ht_tab_del(htread);
-    ht_tab_invalidate(htwrite);
-    ht_tab_del(htwrite);
-    ht_tab_invalidate(htopen);
-    ht_tab_del(htopen);*/
+    ht_tab_del(htuname);
     free(s.syscall);
     free(s.socket);
     free(s.virsc);
-    //umnet_delallproc();
     printk(KERN_NOTICE "umsandnet fini\n");
 }
 
