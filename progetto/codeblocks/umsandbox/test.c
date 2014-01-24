@@ -476,9 +476,9 @@ success:
     ret = connect(sockfd,addr,addrlen);
 #ifdef DEBUG
     if (ret == 0)
-        printk("CONNECTSUCCESS : %s\n",ip);
+        printk("CONNECT SUCCESS : %s\n",ip);
     else
-        printk("CONNECTFAILURE : %s\n",ip);
+        printk("CONNECT FAILURE : %s\n",ip);
 #endif
     return ret;
 }
@@ -813,13 +813,13 @@ fini (void) {
     ht_tab_invalidate(htsocket);
     ht_tab_del(htsocket);
     ht_tab_invalidate(htuname);
-    ht_tab_del(htuname);
+    /*ht_tab_del(htuname);
     ht_tab_invalidate(htread);
     ht_tab_del(htread);
     ht_tab_invalidate(htwrite);
     ht_tab_del(htwrite);
     ht_tab_invalidate(htopen);
-    ht_tab_del(htopen);
+    ht_tab_del(htopen);*/
     free(s.syscall);
     free(s.socket);
     free(s.virsc);
