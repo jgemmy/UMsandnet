@@ -14,4 +14,4 @@ umsandnet.o: umsandnet.c
 	gcc -c -shared ${GCCFLAGS} umsandnet.c
 
 install:
-	mv umsandnet.so /usr/local/lib/umview/modules/umsandnet.so
+	cp umsandnet.so /usr/local/lib/umview/modules/umsandnet.so
