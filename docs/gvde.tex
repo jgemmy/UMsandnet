@@ -14,7 +14,13 @@ Il computer utilizzato è munito di processore Intel i7 2600K (quadcore con hype
 \section{Gvde vs vde}
 La principale differenza tra {\em gvde} e {\em vde} sta nella gestione dello smistamento dei pacchetti: in {\em vde} lo switch è incaricato di ricevere ed inviare i dati alle macchine virtuali, partecipando quindi attivamente al trasferimento dei dati; in {\em gvde} lo smistamento viene effettuato direttamente da {\em libvdeplug} mediante memoria condivisa, quindi attraverso la libreria caricata dalla macchina virtuale, riducendo quindi l'utilizzo del processore da parte dello switch a zero.
 \subsection{I test effettuati}
-Sono state prese in esame le configurazioni composte da due, quattro, sei ed otto macchine virtuali {\em qemu-kvm}, comunicanti due a due tra di loro attraverso l'utility {\em iperf} pensata specificatamente per analizzare le prestazioni di rete: prima viene eseguito in modalità TCP per stimare l'ampiezza di banda $B$, poi in modalità UDP, che necessita come input la velocità d'invio, per analizzare la quantità di pacchetti persi. In particolare, per la modalità UDP è stato generato traffico in ambo le direzioni con ampiezza $ \frac{B}{2*\#VMs} $ per singolo flusso.
+Sono state prese in esame le configurazioni composte da due, quattro, sei ed otto macchine virtuali {\em qemu-kvm}, comunicanti due a due tra di loro attraverso l'utility {\em iperf} pensata specificatamente per analizzare le prestazioni di rete con trasferimenti di cinque minuti l'uno: prima viene eseguito in modalità TCP per stimare l'ampiezza di banda $B$, poi in modalità UDP, che necessita come input la velocità d'invio, per analizzare la quantità di pacchetti persi. In particolare, per la modalità UDP è stato generato traffico in ambo le direzioni con ampiezza $ \frac{B}{2*\#VMs} $ per singolo flusso. Nello specifico i comandi utilizzati sono stati:
+\begin{itemize}
+\item {\em iperf -s}: crea un server TCP sulla porta di default.
+\item {\em iperf -su}: crea un server UDP sulla porta di default.
+\item {\em iperf -c <IP> -t <DURATA>}: avvia un trasferimento unidirezionale in modalità TCP per la durata indicata.
+\item {\em iperf -c <IP> -t <DURATA> -dub <BANDA>}: avvia un trasferimento bidirezionale in modalità UDP per la durata indicata, l'ampiezza di banda deve essere specificata anche con l'ordine di grandezza, e.g. 95M = 95Mbits/s.
+\end{itemize}
 \subsection{I risultati}
 Legenda:
 \begin{itemize}

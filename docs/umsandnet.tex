@@ -1,9 +1,10 @@
 \chapter{UMsandnet}
 \section{Descrizione}
 {\em UMview} permette di creare delle macchine virtuali a livello di syscalls, ovvero l'esecuzione dentro alla macchina è identica all'esecuzione fuori, tranne per le chiamate a sistema, che vengono intercettate dal core di {\em UMview} e delegate ad eventuali moduli e sottomoduli per gestirne la virtualizzazione.
-{\em UMsandnet} è un modulo per {\em UMview} che permette di supervisionare in modo interattivo la connettività di un singolo processo ed i suoi discendenti, ovvero la possibilità di decidere se consentire traffico in uscita od entrata.
+{\em UMsandnet} è un modulo per {\em UMview} che permette di supervisionare in modo interattivo la connettività di un singolo processo, ovvero la possibilità di decidere se consentire traffico in uscita od entrata.
 Il funzionamento del modulo si basa sull'intercettazione di determinate socketcalls, lasciando la decisione della loro effettiva esecuzione all'utente, permettendo quindi di avere una sorta di firewall prototipale in userspace per singoli processi.
 \section{Funzionamento}
+Per poter utilizzare il modulo è sufficiente compilarlo e copiarlo nella directory dei moduli di {\em UMview} e caricarlo attraverso l'utility {\em um\_add\_service}, la quale richiede il nome del modulo come argomento (e.g. {\em um\_add\_service umsandnet}). La compilazione e l'installazione possono essere eseguiti attraverso il Makefile fornito.
 Le socketcalls principali interessate sono le seguenti:
 \begin{itemize}
 \item {\em int socket(int domain, int type, int protocol)}: è possibile approvare/negare traffico di basso livello, i.e. domain == AF\_PACKET || type == SOCK\_RAW, che altrimenti sfuggerebbe alle socketcalls seguenti.
