@@ -1,5 +1,5 @@
 /*
- **   UMsandnet: POC firewall module for UMview.
+ **   UMsandnet module for UMview.
  * *   Copyright (C) 2014 phra
  *  *
  *   *   This program is free software; you can redistribute it and/or modify
@@ -15,7 +15,7 @@
  *             *   along with this program; if not, write to the Free Software Foundation, Inc.,
  *              *   51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
  *               *
- ******************/
+ * * * * * * * * */
 
 #define _GNU_SOURCE
 #include <stdio.h>
