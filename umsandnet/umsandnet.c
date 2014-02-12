@@ -4,18 +4,19 @@
  *  *
  *   *   This program is free software; you can redistribute it and/or modify
  *    *   it under the terms of the GNU General Public License, version 2, as
- *     *   published by the Free Software Foundation.
- *      *
- *       *   This program is distributed in the hope that it will be useful,
- *        *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *         *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *          *   GNU General Public License for more details.
- *           *
- *            *   You should have received a copy of the GNU General Public License
- *             *   along with this program; if not, write to the Free Software Foundation, Inc.,
- *              *   51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
- *               *
- * * * * * * * * */
+ *     *   published by the Free Software Foundation, or (at your opinion)
+ *      *   any later version.
+ *       *
+ *        *   This program is distributed in the hope that it will be useful,
+ *         *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *          *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *           *   GNU General Public License for more details.
+ *            *
+ *             *   You should have received a copy of the GNU General Public License
+ *              *   along with this program; if not, write to the Free Software Foundation,
+ *               *   Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA.
+ *                *
+ * * * * * * * * * */
 
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -65,10 +66,13 @@ char permitallbind = 0;
 static struct service s;
 VIEWOS_SERVICE(s)
 
-
-static int stampa(int type, void *arg, int arglen, struct ht_elem *ht) {
+/**
+ * debug function.
+ * \return 1
+ */
+static int print(int type, void *arg, int arglen, struct ht_elem *ht) {
 #ifdef DEBUG
-    printk("PROVA type = %d, arg = %lu, arglen = %d, ht = %lu\n", type, arg, arglen, ht);
+    printk("[DEBUG] type = %d, arg = %lu, arglen = %d, ht = %lu\n", type, arg, arglen, ht);
 #endif
     return 1;
 }
@@ -80,6 +84,11 @@ typedef struct unique {
 
 lista_t whitelist, blacklist;
 
+/**
+ * create a new element of the list.
+ * \param addr address to add.
+ * \return pointer to the new element
+ */
 static inline lista_t* __crea(struct sockaddr* addr) {
     lista_t* new = malloc(sizeof(lista_t));
     assert(new);
@@ -88,6 +97,11 @@ static inline lista_t* __crea(struct sockaddr* addr) {
     return new;
 }
 
+/**
+ * add new element to a list.
+ * \param saddr address to add.
+ * \param sentinella sentinel of the list.
+ */
 static void addaddr(struct sockaddr* saddr, lista_t* sentinella) {
     uint16_t family = saddr->sa_family;
     if (family == AF_INET || family == AF_INET6) {
@@ -100,6 +114,13 @@ static void addaddr(struct sockaddr* saddr, lista_t* sentinella) {
     }
 }
 
+/**
+ * compare two sockaddr structures.
+ * \param s1 pointer to first sockaddr
+ * \param s2 pointer to second sockaddr
+ * \return 0 if they are equals. 
+ */
+
 static int sockaddrcmp(struct sockaddr* s1, struct sockaddr* s2) {
     uint16_t family = s1->sa_family;
     if (s1->sa_family == s2->sa_family) {
@@ -109,10 +130,16 @@ static int sockaddrcmp(struct sockaddr* s1, struct sockaddr* s2) {
         case AF_INET6:
             return memcmp(&((struct sockaddr_in6*)s1)->sin6_addr, &((struct sockaddr_in6*)s2)->sin6_addr,sizeof(struct in6_addr));
         }
-        return 0;
     }
     return 1;
 }
+
+/**
+ * look for an address in a specific list.
+ * \param target address to look for
+ * \param sentinella sentinel of the list
+ * \return pointer to found element, else NULL
+ */
 
 static lista_t* _lookforaddr(struct sockaddr* target, lista_t* sentinella) {
     lista_t* iter = sentinella;
@@ -132,18 +159,30 @@ static lista_t* _lookforaddr(struct sockaddr* target, lista_t* sentinella) {
     return NULL;
 }
 
+/**
+ * look for an address in the blacklist and whitelist.
+ * \param target address to look for
+ * \return an int to indicate a list or 0 if not found
+ */
+
 static int lookforaddr(struct sockaddr* target) {
     lista_t* white,* black;
     white = _lookforaddr(target,&whitelist);
     black = _lookforaddr(target,&blacklist);
     if (unlikely(black && white)) {
-        printk("lookforaddr: indirizzo sia nella whitelist sia nella blacklist.\n");
+        printk("lookforaddr error: address is in both lists..\n");
         fflush(stdout);
         exit(-1);
     } else if (black) return BLACK;
     else if (white) return WHITE;
     else return 0;
 }
+
+/**
+ * uname() substitute.
+ * \param buf pointer to user buffer.
+ * \return 0 if no errors, else -1
+ */
 
 static int myuname(struct utsname *buf) {
 #ifdef DEBUG
@@ -160,6 +199,15 @@ static int myuname(struct utsname *buf) {
 
 }
 
+/**
+ * wrapper of msocket(). it asks if allow or not creation of sockets.
+ * \param path path to the network stack.
+ * \param domain domain of the socket
+ * \param type type of the socket
+ * \protocol protocol of the socket
+ * \return new socket's fd or -1 if errors
+ */
+
 static int mymsocket(char* path, int domain, int type, int protocol) {
     int ret;
     if (unlikely((domain == PF_PACKET) || (((domain == PF_INET) || (domain == PF_INET6)) && (type == SOCK_RAW)))) {
@@ -171,7 +219,7 @@ static int mymsocket(char* path, int domain, int type, int protocol) {
             char buf[BUFSTDIN];
             char response;
             memset(buf,0,BUFSTDIN);
-            printk("msocket di basso livello con parametri path = %s, domain %d, type = %d, proto = %d, permettere(Y/y/n/N)?\n",
+            printk("low level socket required w/ path = %s, domain %d, type = %d, proto = %d, do you want to allow access to it? (Y/y/n/N)?\n",
                    path == NULL? "NULL" : path, domain, type, protocol);
             fgets(buf,BUFSTDIN,stdin);
             sscanf(buf,"%c",&response);
@@ -196,7 +244,7 @@ static int mymsocket(char* path, int domain, int type, int protocol) {
     switch(domain) {
     case PF_LOCAL:
 #ifdef DEBUG
-        printk("msocket locale con parametri path = %s, domain %d, type = %d, proto = %d\n",
+        printk("msocket PF_LOCAL and path = %s, domain %d, type = %d, proto = %d\n",
                path == NULL? "NULL" : path, domain, type, protocol);
 #endif
         break;
@@ -214,17 +262,16 @@ static int mymsocket(char* path, int domain, int type, int protocol) {
         break;
     default:
 #ifdef DEBUG
-        printk("altro socket richiesto (%d %d %d).\n",domain, type, protocol);
-        ù
+        printk("other socket required (%d %d %d).\n",domain, type, protocol);
 #endif
         break;
     }
     ret = msocket(path, domain, type, protocol);
 #ifdef DEBUG
     printk("msocket returned #%d\n",ret);
-#endif
     fflush(stdout);
     fflush(stderr);
+#endif
     return ret;
 }
 
@@ -235,6 +282,14 @@ static int myclose(int fd) {
 #endif
     return ret;
 }
+
+/**
+ * wrapper of connect(). it asks to allow or not connect to requested IP.
+ * \param sockfd file descriptor of the socket
+ * \param addr pointer of sockaddr structure of the remote endpoint
+ * \param addrlen lenght of the sockaddr structure
+ * \return 0 if success, -1 else
+ */
 
 static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen) {
 #ifdef DEBUG
@@ -266,7 +321,7 @@ static int myconnect(int sockfd, struct sockaddr *addr, socklen_t addrlen) {
     if (family == AF_INET || family == AF_INET6) {
         char buf[BUFSTDIN];
         memset(buf,0,BUFSTDIN);
-        printk("rilevato un tentativo di connect verso l'ip %s: vuoi permetterla? (A/Y/y/n/N) ",ip);
+        printk("connect(%d) to IP =  %s detected: do you want to allow it? (A/Y/y/n/N) ",sockfd,ip);
         fgets(buf,BUFSTDIN,stdin);
         sscanf(buf,"%c",&response);
         switch(response) {
@@ -300,11 +355,19 @@ success:
     return ret;
 }
 
+/**
+ * wrapper of bind(). it asks to allow bind() on requested port.
+ * \param sockfd file descriptor of the socket
+ * \param addr pointer to sockaddr of local endpoint
+ * \param addrlen lenght of the sockaddr structure
+ * \return 0 if success, else -1
+ */
+
 static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     char ip[INET6_ADDRSTRLEN],response = 'n',buf[BUFSTDIN];
     uint16_t port, family = addr->sa_family;
 #ifdef DEBUG
-    printk("bind su fd #%d , family %d \n",sockfd,family);
+    printk("bind on fd #%d , family %d \n",sockfd,family);
 #endif
     memset(ip,0,INET6_ADDRSTRLEN*sizeof(char));
     switch(family) {
@@ -319,7 +382,7 @@ static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     }
     if (!permitallbind && (family == AF_INET || family == AF_INET6)) {
         int ret;
-        printk("rilevato un tentativo di bind(%d) sulla porta %d: vuoi permetterla? (Y/y/n)\n", sockfd, port);
+        printk("bind(fd = %d) on port %d detected: do you want to allow it? (Y/y/n)\n", sockfd, port);
         memset(buf,0,BUFSTDIN);
         fgets(buf,BUFSTDIN,stdin);
         sscanf(buf,"%c",&response);
@@ -341,12 +404,27 @@ static int mybind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     } else return bind(sockfd,addr,addrlen);
 }
 
+/**
+ * wrapper of accept().
+ * \param sockfd file descriptor of the socket
+ * \param addr pointer to sockaddr structure buffer of the remote endpoint
+ * \param addrlen lenght of the sockaddr structure
+ * \return 0 on success, else -1
+ */
+
 static int myaccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
 #ifdef DEBUG
     printk("myaccept\n");
 #endif
     return accept(sockfd,addr,addrlen);
 }
+
+/**
+ * wrapper of listen().
+ * \param sockfd file descriptor of the socket
+ * \param backlog maximum length to which the queue of pending connections may grow
+ * \return 0 on success, else -1
+ */
 
 static int mylisten(int sockfd, int backlog) {
 #ifdef DEBUG
@@ -355,39 +433,70 @@ static int mylisten(int sockfd, int backlog) {
     return listen(sockfd, backlog);
 }
 
+/**
+ * wrapper of read().
+ * \param fd file descriptor of the socket
+ * \param buf pointer to user buffer
+ * \param count lenght of the buffer
+ * \return number of read bytes.
+ */
 ssize_t myread(int fd, void *buf, size_t count) {
 #ifdef DEBUG
     printk("MYREAD for %d bytes\n",count);
-#endif
     fflush(stdout);
     fflush(stderr);
+#endif
     return read(fd,buf,count);
 }
 
+/**
+ * wrapper of write().
+ * \param fd file descriptor of the socket
+ * \param buf pointer to user buffer
+ * \param count lenght of the buffer
+ * \return number of written bytes.
+ */
 ssize_t mywrite(int fd, const void *buf, size_t count) {
 #ifdef DEBUG
     printk("MYWRITE\n");
-#endif
     fflush(stdout);
     fflush(stderr);
+#endif
     return write(fd,buf,count);
 }
 
+/**
+ * wrapper of recv().
+ * \param sockfd file descriptor of the socket
+ * \param buf pointer to user buffer
+ * \param len lenght of the buffer
+ * \param flags flags of recv()
+ * \return number of received bytes 
+ */
 ssize_t myrecv(int sockfd, void *buf, size_t len, int flags) {
 #ifdef DEBUG
     printk("MYRECV\n");
-#endif
     fflush(stdout);
     fflush(stderr);
+#endif
     return recv(sockfd,buf,len,flags);
 }
+
+/**
+ * wrapper of send().
+ * \param sockfd file descriptor of the socket
+ * \param buf pointer to user buffer
+ * \param len lenght of the buffer
+ * \param flags flags of send()
+ * \return number of sended bytes 
+ */
 
 ssize_t mysend(int sockfd, const void *buf, size_t len, int flags) {
 #ifdef DEBUG
     printk("MYSEND\n");
-#endif
     fflush(stdout);
     fflush(stderr);
+#endif
     return send(sockfd,buf,len,flags);
 }
 
@@ -461,6 +570,10 @@ void *viewos_init(char *args) {
     return NULL;
 }
 
+/**
+ * entrypoint of the module.
+ */
+
 static void
 __attribute__ ((constructor))
 init (void) {
@@ -493,12 +606,15 @@ init (void) {
     SERVICESYSCALL(s, write, mywrite);
     SERVICESYSCALL(s, close, myclose);
     SERVICESYSCALL(s, ioctl, myioctl);
-    htsocket = ht_tab_add(CHECKSOCKET,NULL,0,&s,stampa,NULL);
+    htsocket = ht_tab_add(CHECKSOCKET,NULL,0,&s,print,NULL);
     htuname=ht_tab_add(CHECKSC,&nruname,sizeof(int),&s,NULL,NULL);
     s.ioctlparms = (sysfun) myioctlparms;
     s.event_subscribe = (sysfun)um_mod_event_subscribe;
 }
 
+/**
+ * exitpoint of the module
+ */
 static void
 __attribute__ ((destructor))
 fini (void) {
